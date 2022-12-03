@@ -1,8 +1,8 @@
 ## Overview
 
-mcu-max is a C-language wrapper for the [micro-Max][micro-max-link] chess engine, making integration in MCU projects of micro-Max considerably simpler.
+mcu-max is an MCU optimized C-language wrapper for the [micro-Max][micro-max-link] chess engine.
 
-mcu-max comes also with an UCI interface for micro-Max, simplifying tests.
+mcu-max also comes with a UCI interface for simplifying tests.
 
 ## Features
 
