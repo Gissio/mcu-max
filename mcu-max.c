@@ -676,6 +676,7 @@ void mcumax_get_valid_moves(mcumax_square *valid_moves_buffer, int valid_moves_b
 
     InputFrom = MCUMAX_INVALID;
     InputTo = MCUMAX_INVALID;
+    Nodes = 0;
 
     Search(-MCUMAX_INFINITY, MCUMAX_INFINITY, RootEval, Rootep, 1, 3);
 
@@ -689,7 +690,7 @@ bool mcumax_play_move(mcumax_square move_from, mcumax_square move_to)
 
     InputFrom = move_from;
     InputTo = move_to;
-    Nodes = MCUMAX_BOARD_MASK;
+    Nodes = 0;
 
     Search(-MCUMAX_INFINITY, MCUMAX_INFINITY, RootEval, Rootep, 1, 3);
 
@@ -703,7 +704,7 @@ bool mcumax_play_best_move(int nodes_limit,
     ValidMovesBuffer = NULL;
 
     InputFrom = MCUMAX_INFINITY;
-    Nodes = MCUMAX_BOARD_MASK;
+    Nodes = 0;
 
     int Eval = Search(-MCUMAX_INFINITY, MCUMAX_INFINITY, RootEval, Rootep, 1, 3);
 
