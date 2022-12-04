@@ -11,6 +11,8 @@
 
 #include "mcu-max.h"
 
+#define MAIN_VALID_MOVES_NUM 1024
+
 void print_board()
 {
     const char *symbols = ".?pnkbrq?P?NKBRQ";
@@ -58,23 +60,16 @@ bool is_valid_move(char *s)
     return is_valid_square(s) && is_valid_square(s + 2);
 }
 
-void print_move(mcumax_square move_from, mcumax_square move_to)
+void print_move(struct mcumax_move move)
 {
-    if ((move_from == MCUMAX_INVALID) ||
-        (move_to == MCUMAX_INVALID))
+    if ((move.from == MCUMAX_INVALID) ||
+        (move.to == MCUMAX_INVALID))
         printf("(none)");
     else
     {
-        print_square(move_from);
-        print_square(move_to);
+        print_square(move.from);
+        print_square(move.to);
     }
-}
-
-void logLine(char *line)
-{
-    FILE *fp = fopen("C:\\Users\\mressl\\log.txt", "at");
-    fputs(line, fp);
-    fclose(fp);
 }
 
 int main()
@@ -98,7 +93,7 @@ int main()
             printf("id author " MCUMAX_AUTHOR "\n");
             printf("uciok\n");
         }
-        else if (!strcmp(token, "uci") || !strcmp(token, "ucinewgame") )
+        else if (!strcmp(token, "uci") || !strcmp(token, "ucinewgame"))
         {
             mcumax_reset();
         }
@@ -112,19 +107,13 @@ int main()
         }
         else if (!strcmp(token, "l"))
         {
-            mcumax_square valid_moves[512];
-            mcumax_get_valid_moves(valid_moves, sizeof(valid_moves));
+            struct mcumax_move valid_moves[MAIN_VALID_MOVES_NUM];
+            int valid_moves_num = mcumax_get_valid_moves(valid_moves, MAIN_VALID_MOVES_NUM);
 
-            mcumax_square move_from;
-            mcumax_square *valid_moves_p = valid_moves;
-            while ((move_from = *valid_moves_p++) != MCUMAX_INVALID)
+            for (int i = 0; i < valid_moves_num; i++)
             {
-                mcumax_square move_to;
-                while ((move_to = *valid_moves_p++) != MCUMAX_INVALID)
-                {
-                    print_move(move_from, move_to);
-                    printf(" ");
-                }
+                print_move(valid_moves[i]);
+                printf(" ");
             }
             printf("\n");
         }
@@ -159,7 +148,11 @@ int main()
                     }
                     else if (is_valid_move(token))
                     {
-                        mcumax_play_move(get_square(token + 0), get_square(token + 2));
+                        struct mcumax_move move = {
+                            get_square(token + 0),
+                            get_square(token + 2),
+                        };
+                        mcumax_play_move(move);
                     }
                 }
             }
@@ -167,11 +160,11 @@ int main()
         else if (!strcmp(token, "go"))
         {
             int nodes_limit = 1000000;
-            mcumax_square move_from, move_to;
-            mcumax_play_best_move(nodes_limit, &move_from, &move_to);
+            struct mcumax_move move;
+            mcumax_play_best_move(nodes_limit, &move);
 
             printf("bestmove ");
-            print_move(move_from, move_to);
+            print_move(move);
             printf("\n");
         }
         else if (!strcmp(token, "quit"))

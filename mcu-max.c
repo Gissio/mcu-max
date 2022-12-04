@@ -21,10 +21,9 @@ void *CallbackUserdata;
 
 static int NodesLimit;
 
-static int ValidMovesBufferSize;
-static int ValidMovesBufferIndex;
-static mcumax_square ValidMovesFrom;
-static mcumax_square *ValidMovesBuffer;
+static int ValidMovesMaxNum;
+static int ValidMovesIndex;
+static struct mcumax_move *ValidMoves;
 
 /***************************************************************************/
 /*                               micro-Max,                                */
@@ -309,19 +308,10 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
                                 (InputFrom - INF) &&
                                 (Score + INF))
                             {
-                                if (ValidMovesBuffer &&
-                                    (ValidMovesBufferIndex < (ValidMovesBufferSize - 5)))
+                                if (ValidMoves && (ValidMovesIndex < ValidMovesMaxNum))
                                 {
-                                    if (FromSqr != ValidMovesFrom)
-                                    {
-                                        if (ValidMovesFrom != MCUMAX_INVALID)
-                                            ValidMovesBuffer[ValidMovesBufferIndex++] = MCUMAX_INVALID;
-
-                                        ValidMovesBuffer[ValidMovesBufferIndex++] = FromSqr;
-                                        ValidMovesFrom = FromSqr;
-                                    }
-
-                                    ValidMovesBuffer[ValidMovesBufferIndex++] = ToSqr;
+                                    struct mcumax_move move = {FromSqr, ToSqr};
+                                    ValidMoves[ValidMovesIndex++] = move;
                                 }
 
                                 if ((FromSqr == InputFrom) & (ToSqr == InputTo))
@@ -667,12 +657,11 @@ void mcumax_set_callback(mcumax_callback callback, void *userdata)
     CallbackUserdata = userdata;
 }
 
-void mcumax_get_valid_moves(mcumax_square *valid_moves_buffer, int valid_moves_buffer_size)
+int mcumax_get_valid_moves(struct mcumax_move *valid_moves, int valid_moves_max_num)
 {
-    ValidMovesBufferSize = valid_moves_buffer_size;
-    ValidMovesBufferIndex = 0;
-    ValidMovesBuffer = valid_moves_buffer;
-    ValidMovesFrom = MCUMAX_INVALID;
+    ValidMovesMaxNum = valid_moves_max_num;
+    ValidMovesIndex = 0;
+    ValidMoves = valid_moves;
 
     InputFrom = MCUMAX_INVALID;
     InputTo = MCUMAX_INVALID;
@@ -680,16 +669,15 @@ void mcumax_get_valid_moves(mcumax_square *valid_moves_buffer, int valid_moves_b
 
     Search(-MCUMAX_INFINITY, MCUMAX_INFINITY, RootEval, Rootep, 1, 3);
 
-    ValidMovesBuffer[ValidMovesBufferIndex++] = MCUMAX_INVALID;
-    ValidMovesBuffer[ValidMovesBufferIndex++] = MCUMAX_INVALID;
+    return ValidMovesIndex;
 }
 
-bool mcumax_play_move(mcumax_square move_from, mcumax_square move_to)
+bool mcumax_play_move(struct mcumax_move move)
 {
-    ValidMovesBuffer = NULL;
+    ValidMoves = NULL;
 
-    InputFrom = move_from;
-    InputTo = move_to;
+    InputFrom = move.from;
+    InputTo = move.to;
     Nodes = 0;
 
     Search(-MCUMAX_INFINITY, MCUMAX_INFINITY, RootEval, Rootep, 1, 3);
@@ -697,19 +685,18 @@ bool mcumax_play_move(mcumax_square move_from, mcumax_square move_to)
     return (RootEval != INF);
 }
 
-bool mcumax_play_best_move(int nodes_limit,
-                           mcumax_square *move_from, mcumax_square *move_to)
+bool mcumax_play_best_move(int nodes_limit, struct mcumax_move *move)
 {
     NodesLimit = nodes_limit;
-    ValidMovesBuffer = NULL;
+    ValidMoves = NULL;
 
     InputFrom = MCUMAX_INFINITY;
     Nodes = 0;
 
     int Eval = Search(-MCUMAX_INFINITY, MCUMAX_INFINITY, RootEval, Rootep, 1, 3);
 
-    *move_from = InputFrom;
-    *move_to = InputTo;
+    move->from = InputFrom;
+    move->to = InputTo;
 
     return (RootEval != INF);
 }

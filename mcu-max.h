@@ -20,6 +20,12 @@
 typedef unsigned char mcumax_square;
 typedef unsigned char mcumax_piece;
 
+struct mcumax_move
+{
+    mcumax_square from;
+    mcumax_square to;
+};
+
 typedef void (*mcumax_callback)(void *);
 
 /**
@@ -75,10 +81,11 @@ void mcumax_set_callback(mcumax_callback callback, void *userdata);
 /**
  * @brief Returns a list of valid moves.
  *
- * @param valid_moves_buffer List of lists of (move-from, move-to) pairs, terminated by MCUMAX_INVALID.
- * @param valid_moves_buffer_size Size of valid moves buffer.
+ * @param valid_moves Buffer with list of moves.
+ * @param valid_moves_max_num Max number of valid moves buffer can store.
+ * @return Number of valid moves found.
  */
-void mcumax_get_valid_moves(mcumax_square *valid_moves_buffer, int valid_moves_buffer_size);
+int mcumax_get_valid_moves(struct mcumax_move *valid_moves, int valid_moves_max_num);
 
 /**
  * @brief Play move.
@@ -88,7 +95,7 @@ void mcumax_get_valid_moves(mcumax_square *valid_moves_buffer, int valid_moves_b
  *
  * @return Game not finished.
  */
-bool mcumax_play_move(mcumax_square move_from, mcumax_square move_to);
+bool mcumax_play_move(struct mcumax_move move);
 
 /**
  * @brief Play best move.
@@ -99,8 +106,7 @@ bool mcumax_play_move(mcumax_square move_from, mcumax_square move_to);
  *
  * @return Game not finished.
  */
-bool mcumax_play_best_move(int nodes_limit,
-                           mcumax_square *move_from, mcumax_square *move_to);
+bool mcumax_play_best_move(int nodes_limit, struct mcumax_move *move);
 
 /**
  * @brief Stops best move search.
