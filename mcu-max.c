@@ -69,6 +69,7 @@ static int Rootep;
 
 /* hash table, 16M+8 entries */
 #ifdef MCUMAX_HASHING_ENABLED
+
 static struct HashEntry
 {
     int Key;
@@ -462,9 +463,9 @@ void mcumax_reset()
     NonPawnMaterial = 0;
     Side = MCUMAX_SIDE_WHITE;
 
+#ifdef MCUMAX_HASHING_ENABLED
     memset(HashTab, 0, sizeof(HashTab));
 
-#ifdef MCUMAX_HASHING_ENABLED
     srand(1);
     for (int i = sizeof(Zobrist); i > MCUMAX_BOARD_MASK; i--)
         Zobrist[i] = rand() >> 9;
