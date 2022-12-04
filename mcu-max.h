@@ -82,10 +82,10 @@ void mcumax_set_callback(mcumax_callback callback, void *userdata);
  * @brief Returns a list of valid moves.
  *
  * @param valid_moves Buffer with list of moves.
- * @param valid_moves_max_num Max number of valid moves buffer can store.
+ * @param valid_moves_num_max Max number of valid moves buffer can store.
  * @return Number of valid moves found.
  */
-int mcumax_get_valid_moves(struct mcumax_move *valid_moves, int valid_moves_max_num);
+int mcumax_get_valid_moves(struct mcumax_move *valid_moves, int valid_moves_num_max);
 
 /**
  * @brief Play move.

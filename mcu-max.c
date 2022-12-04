@@ -21,7 +21,7 @@ void *CallbackUserdata;
 
 static int NodesLimit;
 
-static int ValidMovesMaxNum;
+static int ValidMovesNumMax;
 static int ValidMovesIndex;
 static struct mcumax_move *ValidMoves;
 
@@ -308,7 +308,7 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
                                 (InputFrom - INF) &&
                                 (Score + INF))
                             {
-                                if (ValidMoves && (ValidMovesIndex < ValidMovesMaxNum))
+                                if (ValidMoves && (ValidMovesIndex < ValidMovesNumMax))
                                 {
                                     struct mcumax_move move = {FromSqr, ToSqr};
                                     ValidMoves[ValidMovesIndex++] = move;
@@ -657,9 +657,9 @@ void mcumax_set_callback(mcumax_callback callback, void *userdata)
     CallbackUserdata = userdata;
 }
 
-int mcumax_get_valid_moves(struct mcumax_move *valid_moves, int valid_moves_max_num)
+int mcumax_get_valid_moves(struct mcumax_move *valid_moves, int valid_moves_num_max)
 {
-    ValidMovesMaxNum = valid_moves_max_num;
+    ValidMovesNumMax = valid_moves_num_max;
     ValidMovesIndex = 0;
     ValidMoves = valid_moves;
 
