@@ -1,9 +1,13 @@
 /*
- * mcu-max wrapper for micro-Max 4.8
+ * mcu-max chess engine for low-resource MCUs
  *
  * (C) 2022 Gissio
  *
  * License: MIT
+ *
+ * Based on micro-Max 4.8 by H.G. Muller.
+ * Compliant with FIDE laws (except for underpromotion).
+ * Optimized for speed and clarity.
  */
 
 #include <stdlib.h>
@@ -12,18 +16,389 @@
 #include "mcu-max.h"
 
 // Configuration
-
 #define MCUMAX_HASHING_ENABLED
 #define MCUMAX_HASH_TABLE_SIZE (1 << 24)
 
-mcumax_callback Callback;
-void *CallbackUserdata;
+// Constants
+#define MCUMAX_BOARD_MASK 0x88
 
-static int NodesLimit;
+#define MCUMAX_MAX_VALUE 1000000
 
-static int ValidMovesNumMax;
-static int ValidMovesIndex;
-static struct mcumax_move *ValidMoves;
+#define MCUMAX_MOVED 0x20
+
+typedef char mcumax_direction;
+
+typedef bool (*mcumax_move_callback)(mcumax_move move);
+
+// The board is 16x8 + dummy; first half: pieces, second half: square weights
+struct
+{
+    // State
+    // char board[0x10 * 0x8 + 1];
+    mcumax_square *board;
+    char current_side; // Either MCUMAX_WHITE or MCUMAX_BLACK
+    mcumax_square en_passant_square;
+
+    // User callback
+    mcumax_callback user_callback;
+    void *user_callback_userdata;
+
+    // Move callback
+    mcumax_move_callback move_callback;
+
+    // Valid moves
+    int valid_moves_buffer_size;
+    mcumax_move *valid_moves_buffer;
+    int valid_moves_num;
+
+    // Best move
+    int depth_max;
+    int nodes_count;
+    int nodes_count_max;
+    mcumax_move best_move;
+
+    // Play move
+    mcumax_move play_move;
+} mcumax;
+
+// Piece values (king is marked negative as it loses game)
+static const char mcumax_piece_values[] = {
+    // 0, 2, 2, -1, 7, 8, 12, 23}; // For underpromotion
+    0, 2, 2, 7, -1, 8, 12, 23};
+
+// Step-vector lists
+static const char mcumax_step_vectors_indices[] = {
+    // 0, 0, 4, 17, 8, 26, 31, 17}; // For underpromotion
+    0, 0, 4, 8, 17, 26, 31, 17};
+
+static const mcumax_direction mcumax_step_vectors[] = {
+    // Upstream pawn
+    -16, -15, -17, 0,
+    // Downstream pawn
+    16, 15, 17, 0,
+    // Knight
+    -31, -14, 18, 33, 31, 14, -18, -33, 0,
+    // King, queen
+    -16, -15, 1, 17, 16, 15, -1, -17, 0,
+    // Bishop
+    -15, 17, 15, -17, 0,
+    // Rook
+    -16, 1, 16, -1, 0};
+
+static const char mcumax_board_setup[] =
+    {
+        MCUMAX_ROOK,
+        MCUMAX_KNIGHT,
+        MCUMAX_BISHOP,
+        MCUMAX_QUEEN,
+        MCUMAX_KING,
+        MCUMAX_BISHOP,
+        MCUMAX_KNIGHT,
+        MCUMAX_ROOK,
+};
+
+static inline void change_side()
+{
+    mcumax.current_side ^= (MCUMAX_WHITE | MCUMAX_BLACK);
+}
+
+static inline bool is_off_board(mcumax_square square)
+{
+    return (square & MCUMAX_BOARD_MASK) != 0;
+}
+
+static inline mcumax_square get_next_board_square(mcumax_square square)
+{
+    return ((square + 9) & ~MCUMAX_BOARD_MASK);
+}
+
+static inline bool is_moving_sideways(mcumax_direction move_direction)
+{
+    return (move_direction == -1) || (move_direction == 1);
+}
+
+static inline bool is_pawn_capture_direction(mcumax_direction direction)
+{
+    return (direction & 0xf) != 0;
+}
+
+static inline bool is_pawn_promotion(mcumax_square move_to)
+{
+    char move_to_rank = (move_to & 0x70);
+
+    return (move_to_rank == 0x0) || (move_to_rank == 0x70);
+}
+
+static inline bool is_pawn_double_move(mcumax_square move_to_square)
+{
+    return (move_to_square & 0x70) == (mcumax.current_side == MCUMAX_WHITE ? 0x50 : 0x20);
+}
+
+static inline mcumax_square get_en_passant_capture_square(mcumax_square capture_square)
+{
+    return capture_square ^ 0x10;
+}
+
+static inline mcumax_square get_castling_from_square(mcumax_square move_to_square)
+{
+    return ((move_to_square & 0x70) | (((move_to_square & 0x7) == 0x5) ? 0x7 : 0x0));
+}
+
+static inline mcumax_square get_castling_neighbor1_square(mcumax_square castling_move_from)
+{
+    return (castling_move_from ^ 1);
+}
+
+static inline mcumax_square get_castling_neighbor2_square(mcumax_square castling_move_from)
+{
+    return (castling_move_from ^ 2);
+}
+
+static inline mcumax_piece get_piece_type(mcumax_piece piece)
+{
+    return (piece & 0x7);
+}
+
+static inline mcumax_piece set_piece_type(mcumax_piece piece, mcumax_piece pieceType)
+{
+    return ((piece & ~0x7) | pieceType);
+}
+
+static inline bool is_empty(mcumax_piece piece)
+{
+    return !piece;
+}
+
+static inline bool is_pawn(mcumax_piece piece)
+{
+    return ((piece & 0x7) <= MCUMAX_PAWN_DOWNSTREAM);
+}
+
+static inline bool is_leaper(mcumax_piece piece)
+{
+    return ((piece & 0x7) < MCUMAX_BISHOP);
+}
+
+static inline bool is_own_piece(mcumax_piece piece)
+{
+    return (piece & mcumax.current_side) != 0;
+}
+
+static inline bool is_unmoved_king(mcumax_piece piece)
+{
+    return ((piece & ~(MCUMAX_WHITE | MCUMAX_BLACK)) == MCUMAX_KING);
+}
+
+static inline bool is_unmoved_rook(mcumax_piece piece)
+{
+    return ((piece & ~(MCUMAX_WHITE | MCUMAX_BLACK)) == MCUMAX_ROOK);
+}
+
+// Traverse the game tree
+int mcumax_traverse_game_tree(int depth, int alpha, int beta)
+{
+    if (mcumax.user_callback)
+        mcumax.user_callback(mcumax.user_callback_userdata);
+
+    mcumax_square move_from_start = 0;
+    int node_count_start = mcumax.nodes_count_max;
+
+    // Traverse squares
+    mcumax_move move;
+    move.from = move_from_start;
+    do
+    {
+        mcumax_piece move_from_piece = mcumax.board[move.from];
+
+        if (!is_own_piece(move_from_piece))
+            continue;
+
+        // For underpromotion:
+        // mcumax_piece pawn_promotion_piece = MCUMAX_QUEEN;
+
+        // Traverse directions
+        int step_vector_index = mcumax_step_vectors_indices[get_piece_type(move_from_piece)];
+        mcumax_direction step_vector;
+        while (step_vector = mcumax_step_vectors[step_vector_index++])
+        {
+            move.to = move.from;
+            mcumax_square en_passant_square = MCUMAX_INVALID;
+            mcumax_move castling_move = {MCUMAX_INVALID, MCUMAX_INVALID};
+
+            // Traverse ray
+            while (true)
+            {
+                move.to += step_vector;
+
+                // Off board?
+                if (is_off_board(move.to))
+                    break;
+
+                // En passant capture?
+                mcumax_square capture_square;
+                if (is_pawn(move_from_piece) && (move.to == mcumax.en_passant_square))
+                    capture_square = get_en_passant_capture_square(mcumax.en_passant_square);
+                else
+                    capture_square = move.to;
+
+                mcumax_piece capture_piece = mcumax.board[capture_square];
+
+                // Own piece?
+                if (is_own_piece(capture_piece))
+                    break;
+
+                // Pawn capture
+                if (is_pawn(move_from_piece))
+                {
+                    // Non-optimized:
+                    if (is_pawn_capture_direction(step_vector))
+                    {
+                        if (is_empty(capture_piece))
+                            break;
+                    }
+                    else
+                    {
+                        if (!is_empty(capture_piece))
+                            break;
+                    }
+
+                    // Optimized:
+                    // if (!(is_pawn_capture_direction(move_direction) ^ is_empty(capture_piece)))
+                    //     break;
+                }
+
+                // Capture piece value
+                int capture_value = 37 * mcumax_piece_values[get_piece_type(capture_piece)];
+
+                // King in check?
+                if (capture_value < 0)
+                {
+                    mcumax.nodes_count_max = node_count_start;
+                    return MCUMAX_MAX_VALUE;
+                }
+
+                // Promote pawn?
+                mcumax_piece move_to_piece;
+                if (is_pawn(move_from_piece) && is_pawn_promotion(move.to))
+                {
+                    move_to_piece = set_piece_type(move_from_piece, MCUMAX_QUEEN);
+
+                    // For underpromotion:
+                    // move_to_piece = set_piece_type(move_from_piece, pawn_promotion_piece);
+                    // if (pawn_promotion_piece > MCUMAX_KNIGHT)
+                    //     step_vector_index--;
+                    // pawn_promotion_piece--;
+                }
+                else
+                    move_to_piece = move_from_piece;
+
+                bool move_in_check = false;
+                if (depth > 0)
+                {
+                    // Make move
+                    mcumax.board[move.from] = MCUMAX_EMPTY;
+                    mcumax.board[capture_square] = MCUMAX_EMPTY;
+                    mcumax.board[move.to] = MCUMAX_MOVED | move_to_piece;
+                    mcumax.board[castling_move.from] = MCUMAX_EMPTY;
+                    mcumax.board[castling_move.to] = mcumax.current_side | MCUMAX_MOVED | MCUMAX_ROOK;
+
+                    change_side();
+
+                    // Negamax recursion
+                    unsigned char prev_en_passant_square = mcumax.en_passant_square;
+                    mcumax.en_passant_square = en_passant_square;
+                    int score = -mcumax_traverse_game_tree(depth - 1, -beta, -alpha);
+                    mcumax.en_passant_square = prev_en_passant_square;
+
+                    move_in_check = (score == -MCUMAX_MAX_VALUE);
+                    if (!move_in_check)
+                    {
+                        mcumax.nodes_count_max++;
+
+                        if (mcumax.move_callback && mcumax.move_callback(move))
+                            return 0;
+                    }
+
+                    // Undo move
+                    change_side();
+
+                    mcumax.board[castling_move.to] = MCUMAX_EMPTY;
+                    mcumax.board[castling_move.from] = mcumax.current_side | MCUMAX_ROOK;
+                    mcumax.board[move.to] = MCUMAX_EMPTY;
+                    mcumax.board[capture_square] = capture_piece;
+                    mcumax.board[move.from] = move_from_piece;
+
+                    // Alpha-beta pruning
+                    score += capture_value;
+                    if (score >= beta)
+                        return beta;
+                    if (score > alpha)
+                    {
+                        alpha = score;
+
+                        if (depth == mcumax.depth_max)
+                            mcumax.best_move = move;
+                    }
+                }
+
+                // Piece captured?
+                if (!is_empty(capture_piece))
+                    break;
+
+                // Pawn double move
+                if (is_pawn(move_from_piece))
+                {
+                    if (!is_pawn_double_move(move.to))
+                        break;
+
+                    en_passant_square = move.to;
+                }
+                // Castling
+                else if (is_unmoved_king(move_from_piece) &&
+                         is_moving_sideways(step_vector) &&
+                         is_off_board(castling_move.from))
+                {
+                    // Rook moved?
+                    castling_move.from = get_castling_from_square(move.to);
+                    if (!is_unmoved_rook(mcumax.board[castling_move.from]))
+                        break;
+
+                    // Two empty squares next to rook?
+                    if (!(is_empty(mcumax.board[get_castling_neighbor1_square(castling_move.from)]) &&
+                          is_empty(mcumax.board[get_castling_neighbor2_square(castling_move.from)])))
+                        break;
+
+                    // From check or through check?
+                    bool currently_in_check = false;
+                    if (depth > 0)
+                    {
+                        change_side();
+
+                        currently_in_check = (mcumax_traverse_game_tree(0, -MCUMAX_MAX_VALUE, MCUMAX_MAX_VALUE) == -MCUMAX_MAX_VALUE);
+
+                        change_side();
+                    }
+
+                    if (currently_in_check || move_in_check)
+                        break;
+
+                    castling_move.to = move.to;
+                }
+                // Leaper?
+                else if (is_leaper(move_from_piece))
+                    break;
+            };
+        }
+    } while ((move.from = get_next_board_square(move.from)) != move_from_start);
+
+    if (depth <= 1)
+    {
+        // To-do: evaluate
+        alpha = 0;
+    }
+
+    return alpha;
+}
 
 /***************************************************************************/
 /*                               micro-Max,                                */
@@ -135,9 +510,8 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
     char StartSqr;
 
     // +++ mcu-max changed
-    if (Callback)
-        Callback(CallbackUserdata);
-
+    if (mcumax.user_callback)
+        mcumax.user_callback(mcumax.user_callback_userdata);
         // --- mcu-max changed
 
         /* lookup pos. in hash table */
@@ -166,7 +540,7 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
     /* iterative deepening loop */
     while ((IterDepth++ < Depth) || (IterDepth < 3) ||
            LastTo & (InputFrom == INF) &&
-               ((Nodes < NodesLimit) & (IterDepth < 98) ||                       /* root: deepen upto time */
+               ((mcumax.nodes_count < mcumax.nodes_count_max) & (IterDepth < 98) ||                       /* root: deepen upto time */
                 (InputFrom = BestFrom, InputTo = (BestTo & ~M), IterDepth = 3))) /* time's up: go do best */
     {
         /* start scan at prev. best */
@@ -184,7 +558,7 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
         BestScore = (-P < Beta) | (NonPawnMaterial > 35) ? (IterDepth > 2) ? -INF : Eval : -P;
 
         /* node count (for timing) */
-        Nodes++;
+        mcumax.nodes_count++;
 
         do
         {
@@ -299,42 +673,26 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
 
                             Score = s;
                             /* move pending & in root: */
-                            // +++ mcu-max changed
-                            // if (LastTo &&
-                            //     (InputFrom - INF) &&
-                            //     (Score + INF) &&
-                            //     (FromSqr == InputFrom) & (ToSqr == InputTo))
                             if (LastTo &&
                                 (InputFrom - INF) &&
-                                (Score + INF))
+                                (Score + INF) &&
+                                (FromSqr == InputFrom) & (ToSqr == InputTo))
                             {
-                                if (ValidMoves && (ValidMovesIndex < ValidMovesNumMax))
-                                {
-                                    struct mcumax_move move = {FromSqr, ToSqr};
-                                    ValidMoves[ValidMovesIndex++] = move;
-                                }
+                                RootEval = -Eval - i;
 
-                                if ((FromSqr == InputFrom) & (ToSqr == InputTo))
-                                // --- mcu-max changed
-                                {
-                                    RootEval = -Eval - i;
+                                /* exit if legal & found */
+                                Rootep = SkipSqr;
 
-                                    /* exit if legal & found */
-                                    Rootep = SkipSqr;
-
-                                    /* lock game in hash as draw */
+                                /* lock game in hash as draw */
 #ifdef MCUMAX_HASHING_ENABLED
-                                    Hash->Draft = 99;
-                                    Hash->Score = 0;
+                                Hash->Draft = 99;
+                                Hash->Score = 0;
 #endif
-                                    NonPawnMaterial += i >> 7;
+                                NonPawnMaterial += i >> 7;
 
-                                    /* captured non-P material */
-                                    return Beta;
-                                }
-                                // +++ mcu-max changed
+                                /* captured non-P material */
+                                return Beta;
                             }
-                            // --- mcu-max changed
 
                             /* restore hash key */
 #ifdef MCUMAX_HASHING_ENABLED
@@ -419,39 +777,47 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
     return BestScore += (BestScore < Eval);
 }
 
+/***************************************************************************/
+
 // mcu-max wrapper
 
-#define MCUMAX_BOARD_MASK 0x88
-#define MCUMAX_INVALID 0x80
+void update_to_micromax()
+{
+    Side = mcumax.current_side ^ (MCUMAX_WHITE | MCUMAX_BLACK);
+    Rootep = mcumax.en_passant_square;
+}
 
-#define MCUMAX_MOVED 0x20
-
-#define MCUMAX_SIDE_BLACK 0x08
-#define MCUMAX_SIDE_WHITE 0x10
-
-#define MCUMAX_INFINITY 8000
+void update_from_micromax()
+{
+    mcumax.current_side = Side ^ (MCUMAX_WHITE | MCUMAX_BLACK);
+    mcumax.en_passant_square = Rootep;
+}
 
 void mcumax_reset()
 {
     for (int x = 0; x < 8; x++)
     {
         // Setup pieces (left side)
-        Board[0x10 * 7 + x] = MCUMAX_WHITE | PieceSetup[x];
+        Board[0x10 * 7 + x] = MCUMAX_WHITE | mcumax_board_setup[x];
         Board[0x10 * 6 + x] = MCUMAX_WHITE | MCUMAX_PAWN_UPSTREAM;
         for (int y = 2; y < 6; y++)
             Board[0x10 * y + x] = MCUMAX_EMPTY;
         Board[0x10 * 1 + x] = MCUMAX_BLACK | MCUMAX_PAWN_DOWNSTREAM;
-        Board[0x10 * 0 + x] = MCUMAX_BLACK | PieceSetup[x];
+        Board[0x10 * 0 + x] = MCUMAX_BLACK | mcumax_board_setup[x];
 
         // Setup weights (right side)
         for (int y = 0; y < 8; y++)
             Board[16 * y + x + 8] = (x - 4) * (x - 4) + (int)((y - 3.5) * (y - 3.5));
     }
 
+    mcumax.current_side = MCUMAX_WHITE;
+    mcumax.en_passant_square = MCUMAX_INVALID;
+
+    // To be removed:
+    update_to_micromax();
+    mcumax.board = Board;
     RootEval = 0;
-    Rootep = MCUMAX_INVALID;
     NonPawnMaterial = 0;
-    Side = MCUMAX_SIDE_WHITE;
 
 #ifdef MCUMAX_HASHING_ENABLED
     memset(HashTab, 0, sizeof(HashTab));
@@ -501,78 +867,67 @@ void mcumax_set_fen_position(const char *fen_string)
         switch (field_index)
         {
         case 0:
-            switch (c)
+            if (board_index < 0x80)
             {
-            case '8':
-                board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
-            case '7':
-                board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
-            case '6':
-                board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
-            case '5':
-                board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
-            case '4':
-                board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
-            case '3':
-                board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
-            case '2':
-                board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
-            case '1':
-                board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
-                break;
-
-            case 'P':
-                board_index = mcumax_set_piece(board_index, MCUMAX_WHITE | MCUMAX_PAWN_UPSTREAM);
-                break;
-
-            case 'N':
-                board_index = mcumax_set_piece(board_index, MCUMAX_WHITE | MCUMAX_KNIGHT);
-                break;
-
-            case 'B':
-                board_index = mcumax_set_piece(board_index, MCUMAX_WHITE | MCUMAX_BISHOP);
-                break;
-
-            case 'R':
-                board_index = mcumax_set_piece(board_index, MCUMAX_WHITE | MCUMAX_ROOK);
-                break;
-
-            case 'Q':
-                board_index = mcumax_set_piece(board_index, MCUMAX_WHITE | MCUMAX_QUEEN);
-                break;
-
-            case 'K':
-                board_index = mcumax_set_piece(board_index, MCUMAX_WHITE | MCUMAX_KING);
-                break;
-
-            case 'p':
-                board_index = mcumax_set_piece(board_index, MCUMAX_BLACK | MCUMAX_PAWN_DOWNSTREAM);
-                break;
-
-            case 'n':
-                board_index = mcumax_set_piece(board_index, MCUMAX_BLACK | MCUMAX_KNIGHT);
-                break;
-
-            case 'b':
-                board_index = mcumax_set_piece(board_index, MCUMAX_BLACK | MCUMAX_BISHOP);
-                break;
-
-            case 'r':
-                board_index = mcumax_set_piece(board_index, MCUMAX_BLACK | MCUMAX_ROOK);
-                break;
-
-            case 'q':
-                board_index = mcumax_set_piece(board_index, MCUMAX_BLACK | MCUMAX_QUEEN);
-                break;
-
-            case 'k':
-                board_index = mcumax_set_piece(board_index, MCUMAX_BLACK | MCUMAX_KING);
-                break;
-
-            case '/':
-                if (board_index < 0x80)
-                    board_index = (board_index & 0xf0) + 0x10;
-                break;
+                switch (c)
+                {
+                case '8':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+                case '7':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+                case '6':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+                case '5':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+                case '4':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+                case '3':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+                case '2':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+                case '1':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+                    break;
+                case 'P':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_PAWN_UPSTREAM | MCUMAX_WHITE);
+                    break;
+                case 'N':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_KNIGHT | MCUMAX_WHITE);
+                    break;
+                case 'B':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_BISHOP | MCUMAX_WHITE);
+                    break;
+                case 'R':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_ROOK | MCUMAX_WHITE);
+                    break;
+                case 'Q':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_QUEEN | MCUMAX_WHITE);
+                    break;
+                case 'K':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_KING | MCUMAX_WHITE);
+                    break;
+                case 'p':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_PAWN_DOWNSTREAM | MCUMAX_BLACK);
+                    break;
+                case 'n':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_KNIGHT | MCUMAX_BLACK);
+                    break;
+                case 'b':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_BISHOP | MCUMAX_BLACK);
+                    break;
+                case 'r':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_ROOK | MCUMAX_BLACK);
+                    break;
+                case 'q':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_QUEEN | MCUMAX_BLACK);
+                    break;
+                case 'k':
+                    board_index = mcumax_set_piece(board_index, MCUMAX_KING | MCUMAX_BLACK);
+                    break;
+                case '/':
+                    board_index = (board_index < 0x80) ? (board_index & 0xf0) + 0x10 : board_index;
+                    break;
+                }
             }
             break;
 
@@ -580,11 +935,10 @@ void mcumax_set_fen_position(const char *fen_string)
             switch (c)
             {
             case 'w':
-                Side = MCUMAX_SIDE_WHITE;
+                mcumax.current_side = MCUMAX_WHITE;
                 break;
-
             case 'b':
-                Side = MCUMAX_SIDE_BLACK;
+                mcumax.current_side = MCUMAX_BLACK;
                 break;
             }
             break;
@@ -593,23 +947,20 @@ void mcumax_set_fen_position(const char *fen_string)
             switch (c)
             {
             case 'K':
-                Board[0x74] &= ~MCUMAX_MOVED;
-                Board[0x77] &= ~MCUMAX_MOVED;
+                mcumax.board[0x74] &= ~MCUMAX_MOVED;
+                mcumax.board[0x77] &= ~MCUMAX_MOVED;
                 break;
-
             case 'Q':
-                Board[0x74] &= ~MCUMAX_MOVED;
-                Board[0x70] &= ~MCUMAX_MOVED;
+                mcumax.board[0x74] &= ~MCUMAX_MOVED;
+                mcumax.board[0x70] &= ~MCUMAX_MOVED;
                 break;
-
             case 'k':
-                Board[0x04] &= ~MCUMAX_MOVED;
-                Board[0x07] &= ~MCUMAX_MOVED;
+                mcumax.board[0x04] &= ~MCUMAX_MOVED;
+                mcumax.board[0x07] &= ~MCUMAX_MOVED;
                 break;
-
             case 'q':
-                Board[0x04] &= ~MCUMAX_MOVED;
-                Board[0x00] &= ~MCUMAX_MOVED;
+                mcumax.board[0x04] &= ~MCUMAX_MOVED;
+                mcumax.board[0x00] &= ~MCUMAX_MOVED;
                 break;
             }
             break;
@@ -625,10 +976,9 @@ void mcumax_set_fen_position(const char *fen_string)
             case 'f':
             case 'g':
             case 'h':
-                Rootep &= 0x7f;
-                Rootep |= (c - 'a');
+                mcumax.en_passant_square &= 0x7f;
+                mcumax.en_passant_square |= (c - 'a');
                 break;
-
             case '1':
             case '2':
             case '3':
@@ -637,71 +987,105 @@ void mcumax_set_fen_position(const char *fen_string)
             case '6':
             case '7':
             case '8':
-                Rootep &= 0x7f;
-                Rootep |= 16 * ('8' - c);
+                mcumax.en_passant_square &= 0x7f;
+                mcumax.en_passant_square |= 16 * ('8' - c);
                 break;
             }
             break;
         }
     }
+
+    // To be removed...
+    update_to_micromax();
 }
 
 mcumax_piece mcumax_get_current_side()
 {
-    return Side == MCUMAX_SIDE_BLACK ? MCUMAX_WHITE : MCUMAX_BLACK;
+    return mcumax.current_side;
 }
 
 void mcumax_set_callback(mcumax_callback callback, void *userdata)
 {
-    Callback = callback;
-    CallbackUserdata = userdata;
+    mcumax.user_callback = callback;
+    mcumax.user_callback_userdata = userdata;
 }
 
-int mcumax_get_valid_moves(struct mcumax_move *valid_moves, int valid_moves_num_max)
+bool mcumax_is_equal(mcumax_move move1, mcumax_move move2)
 {
-    ValidMovesNumMax = valid_moves_num_max;
-    ValidMovesIndex = 0;
-    ValidMoves = valid_moves;
-
-    InputFrom = MCUMAX_INVALID;
-    InputTo = MCUMAX_INVALID;
-    Nodes = 0;
-
-    Search(-MCUMAX_INFINITY, MCUMAX_INFINITY, RootEval, Rootep, 1, 3);
-
-    return ValidMovesIndex;
+    return ((move1.from == move2.from) && (move1.to == move2.to));
 }
 
-bool mcumax_play_move(struct mcumax_move move)
+bool mcumax_is_greater(mcumax_move move1, mcumax_move move2)
 {
-    ValidMoves = NULL;
-
-    InputFrom = move.from;
-    InputTo = move.to;
-    Nodes = 0;
-
-    Search(-MCUMAX_INFINITY, MCUMAX_INFINITY, RootEval, Rootep, 1, 3);
-
-    return (RootEval != INF);
+    if (move1.from != move2.from)
+        return move1.from > move2.from;
+    else
+        return move1.to > move2.to;
 }
 
-bool mcumax_play_best_move(int nodes_limit, struct mcumax_move *move)
+bool mcumax_add_valid_move_callback(mcumax_move move)
 {
-    NodesLimit = nodes_limit;
-    ValidMoves = NULL;
+    if (mcumax.valid_moves_num < mcumax.valid_moves_buffer_size)
+        mcumax.valid_moves_buffer[mcumax.valid_moves_num++] = move;
 
-    InputFrom = MCUMAX_INFINITY;
-    Nodes = 0;
+    return false;
+}
 
-    int Eval = Search(-MCUMAX_INFINITY, MCUMAX_INFINITY, RootEval, Rootep, 1, 3);
+int mcumax_get_valid_moves(mcumax_move *valid_moves_buffer, int valid_moves_buffer_size)
+{
+    mcumax.board = Board;
+    mcumax.current_side = (Side == MCUMAX_BLACK) ? MCUMAX_WHITE : MCUMAX_BLACK;
+    mcumax.en_passant_square = Rootep;
+    mcumax.move_callback = mcumax_add_valid_move_callback;
 
-    move->from = InputFrom;
-    move->to = InputTo;
+    mcumax.valid_moves_buffer_size = valid_moves_buffer_size;
+    mcumax.valid_moves_buffer = valid_moves_buffer;
+    mcumax.valid_moves_num = 0;
 
-    return (RootEval != INF);
+    mcumax_traverse_game_tree(1, -MCUMAX_MAX_VALUE, MCUMAX_MAX_VALUE);
+
+    return mcumax.valid_moves_num;
+}
+
+void mcumax_get_best_move(int nodes_count_max, mcumax_move *move)
+{
+}
+
+void mcumax_play_best_move(int nodes_count_max, mcumax_move *move)
+{
+    mcumax.nodes_count_max = nodes_count_max;
+    mcumax.nodes_count = 0;
+
+    mcumax.valid_moves_buffer = NULL;
+
+    InputFrom = INF;
+    update_to_micromax();
+    int Eval = Search(-INF, INF, RootEval, Rootep, 1, 3);
+    update_from_micromax();
+
+    if (Eval > (-INF + 1))
+        *move = (mcumax_move){InputFrom, InputTo};
+    else
+        *move = (mcumax_move){MCUMAX_INVALID, MCUMAX_INVALID};
 }
 
 void mcumax_stop_search()
 {
-    NodesLimit = 0;
+    mcumax.nodes_count = 0;
+}
+
+void mcumax_play_move(mcumax_move move)
+{
+    mcumax.nodes_count = 0;
+
+    mcumax.valid_moves_buffer = NULL;
+
+    InputFrom = move.from;
+    InputTo = move.to;
+
+    update_to_micromax();
+    Search(-INF, INF, RootEval, Rootep, 1, 3);
+    update_from_micromax();
+
+    return;
 }

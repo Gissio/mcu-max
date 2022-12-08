@@ -11,7 +11,7 @@
 
 #include "mcu-max.h"
 
-#define MAIN_VALID_MOVES_NUM 1024
+#define MAIN_VALID_MOVES_NUM 512
 
 void print_board()
 {
@@ -60,7 +60,7 @@ bool is_valid_move(char *s)
     return is_valid_square(s) && is_valid_square(s + 2);
 }
 
-void print_move(struct mcumax_move move)
+void print_move(mcumax_move move)
 {
     if ((move.from == MCUMAX_INVALID) ||
         (move.to == MCUMAX_INVALID))
@@ -77,6 +77,7 @@ int main()
     mcumax_reset();
 
     // UCI command loop
+    int i = 0;
     while (1)
     {
         char line[65536];
@@ -107,7 +108,7 @@ int main()
         }
         else if (!strcmp(token, "l"))
         {
-            struct mcumax_move valid_moves[MAIN_VALID_MOVES_NUM];
+            mcumax_move valid_moves[MAIN_VALID_MOVES_NUM];
             int valid_moves_num = mcumax_get_valid_moves(valid_moves, MAIN_VALID_MOVES_NUM);
 
             for (int i = 0; i < valid_moves_num; i++)
@@ -148,7 +149,7 @@ int main()
                     }
                     else if (is_valid_move(token))
                     {
-                        struct mcumax_move move = {
+                        mcumax_move move = {
                             get_square(token + 0),
                             get_square(token + 2),
                         };
@@ -161,7 +162,7 @@ int main()
         {
             int nodes_limit = 1000000;
 
-            struct mcumax_move move;
+            mcumax_move move;
             mcumax_play_best_move(nodes_limit, &move);
 
             printf("bestmove ");

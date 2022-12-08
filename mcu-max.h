@@ -1,18 +1,22 @@
 /*
- * mcu-max wrapper for micro-Max 4.8
+ * mcu-max chess engine for low-resource MCUs
  *
  * (C) 2022 Gissio
  *
  * License: MIT
+ *
+ * Based on micro-Max 4.8 by H.G. Muller.
+ * Compliant with FIDE laws (except for underpromotion).
+ * Optimized for speed and clarity.
  */
 
-#ifndef MCUMAX_H
-#define MCUMAX_H
+#ifndef MCU_MAX_H
+#define MCU_MAX_H
 
 #include <stdbool.h>
 
-#define MCUMAX_NAME "mcu-max 1.0 (micro-Max 4.8)"
-#define MCUMAX_AUTHOR "Gissio, H.G. Muller"
+#define MCUMAX_NAME "mcu-max 1.0"
+#define MCUMAX_AUTHOR "Gissio"
 
 // Invalid position
 #define MCUMAX_INVALID 0x80
@@ -20,11 +24,11 @@
 typedef unsigned char mcumax_square;
 typedef unsigned char mcumax_piece;
 
-struct mcumax_move
+typedef struct
 {
     mcumax_square from;
     mcumax_square to;
-};
+} mcumax_move;
 
 typedef void (*mcumax_callback)(void *);
 
@@ -37,6 +41,9 @@ enum
     MCUMAX_EMPTY,
     MCUMAX_PAWN_UPSTREAM,
     MCUMAX_PAWN_DOWNSTREAM,
+    // For underpromotion:
+    // MCUMAX_KING,
+    // MCUMAX_KNIGHT,
     MCUMAX_KNIGHT,
     MCUMAX_KING,
     MCUMAX_BISHOP,
@@ -81,36 +88,35 @@ void mcumax_set_callback(mcumax_callback callback, void *userdata);
 /**
  * @brief Returns a list of valid moves.
  *
- * @param valid_moves Buffer with list of moves.
- * @param valid_moves_num_max Max number of valid moves buffer can store.
+ * @param valid_moves_buffer Moves buffer.
+ * @param valid_moves_buffer_size Size of moves buffer.
  * @return Number of valid moves found.
  */
-int mcumax_get_valid_moves(struct mcumax_move *valid_moves, int valid_moves_num_max);
+int mcumax_get_valid_moves(mcumax_move *valid_moves_buffer, int valid_moves_buffer_size);
 
 /**
- * @brief Play move.
+ * @brief Get best move.
  *
- * @param move_from Move from position.
- * @param move_to Move to position.
- *
- * @return Game not finished.
+ * @param nodes_count_max Max number of nodes to analyze.
+ * @param move Best move.
  */
-bool mcumax_play_move(struct mcumax_move move);
+void mcumax_get_best_move(int nodes_count_max, mcumax_move *move);
 
-/**
- * @brief Play best move.
- *
- * @param nodes_limit Max nodes to analyze (1000000: Elo 1955, 10000: Elo ~1500)
- * @param move_from Move from position.
- * @param move_to Move to position.
- *
- * @return Game not finished.
- */
-bool mcumax_play_best_move(int nodes_limit, struct mcumax_move *move);
+// To be removed...
+void mcumax_play_best_move(int nodes_count_max, mcumax_move *move);
 
 /**
  * @brief Stops best move search.
  */
 void mcumax_stop_search();
+
+/**
+ * @brief Play move.
+ *
+ * @param move The move.
+ *
+ * @return Game not finished.
+ */
+void mcumax_play_move(mcumax_move move);
 
 #endif
