@@ -161,7 +161,6 @@ int main()
         else if (!strcmp(token, "go"))
         {
             int nodes_limit = 1000000;
-
             mcumax_move move;
             mcumax_play_best_move(nodes_limit, &move);
 

@@ -1,5 +1,6 @@
 /*
- * mcu-max chess engine for low-resource MCUs
+ * mcu-max 0.9.1
+ * Chess engine for low-resource MCUs
  *
  * (C) 2022 Gissio
  *
@@ -26,7 +27,7 @@
 
 #define MCUMAX_MOVED 0x20
 
-typedef char mcumax_direction;
+typedef signed char mcumax_direction;
 
 typedef bool (*mcumax_move_callback)(mcumax_move move);
 
@@ -34,9 +35,8 @@ typedef bool (*mcumax_move_callback)(mcumax_move move);
 struct
 {
     // State
-    // char board[0x10 * 0x8 + 1];
-    mcumax_square *board;
-    char current_side; // Either MCUMAX_WHITE or MCUMAX_BLACK
+    mcumax_square board[0x10 * 0x8 + 1];
+    unsigned char current_side; // Either MCUMAX_WHITE or MCUMAX_BLACK
     mcumax_square en_passant_square;
 
     // User callback
@@ -59,6 +59,9 @@ struct
 
     // Play move
     mcumax_move play_move;
+
+    // Stop search
+    volatile bool stop_search;
 } mcumax;
 
 // Piece values (king is marked negative as it loses game)
@@ -67,7 +70,7 @@ static const char mcumax_piece_values[] = {
     0, 2, 2, 7, -1, 8, 12, 23};
 
 // Step-vector lists
-static const char mcumax_step_vectors_indices[] = {
+static const unsigned char mcumax_step_vectors_indices[] = {
     // 0, 0, 4, 17, 8, 26, 31, 17}; // For underpromotion
     0, 0, 4, 8, 17, 26, 31, 17};
 
@@ -124,7 +127,7 @@ static inline bool is_pawn_capture_direction(mcumax_direction direction)
 
 static inline bool is_pawn_promotion(mcumax_square move_to)
 {
-    char move_to_rank = (move_to & 0x70);
+    unsigned char move_to_rank = (move_to & 0x70);
 
     return (move_to_rank == 0x0) || (move_to_rank == 0x70);
 }
@@ -427,19 +430,17 @@ int mcumax_traverse_game_tree(int depth, int alpha, int beta)
 #define INF 8000
 
 #define K(A, B) *(int *)(Zobrist + A + (B & 8) + S * (B & 7))
-#define J(A) K(ToSqr + A, Board[ToSqr]) - K(FromSqr + A, Piece) - K(CaptSqr + A, Victim)
+#define J(A) K(ToSqr + A, mcumax.board[ToSqr]) - K(FromSqr + A, Piece) - K(CaptSqr + A, Victim)
 
 static int InputFrom;
-static char InputTo;
+static unsigned char InputTo;
 
 /* board: half of 16x8+dummy */
-char Board[129];
-static int Nodes;
 static int NonPawnMaterial;
-static int Side = 0x10;
+static int Side;
 
 static int RootEval;
-static int Rootep;
+static int RootEP;
 
 /* hash table, 16M+8 entries */
 #ifdef MCUMAX_HASHING_ENABLED
@@ -448,29 +449,29 @@ static struct HashEntry
 {
     int Key;
     int Score;
-    char From;
-    char To;
-    char Draft;
+    unsigned char From;
+    unsigned char To;
+    unsigned char Draft;
 } HashTab[MCUMAX_HASH_TABLE_SIZE];
 
 static int HashKeyLo;
 static int HashKeyHi;
 
 /* hash translation table */
-char Zobrist[1035];
+unsigned char Zobrist[1035];
 #endif
 
 /* relative piece values */
-const char PieceVal[] = {0, 2, 2, 7, -1, 8, 12, 23};
+const signed char PieceVal[] = {0, 2, 2, 7, -1, 8, 12, 23};
 
 /* 1st dir. in StepVecs[] per piece */
-const char StepVecsIndices[] = {0, 7, -1, 11, 6, 8, 3, 6};
+const signed char StepVecsIndices[] = {0, 7, -1, 11, 6, 8, 3, 6};
 
 /* step-vector lists */
-const char StepVecs[] = {-16, -15, -17, 0, 1, 16, 0, 1, 16, 15, 17, 0, 14, 18, 31, 33, 0};
+const signed char StepVecs[] = {-16, -15, -17, 0, 1, 16, 0, 1, 16, 15, 17, 0, 14, 18, 31, 33, 0};
 
 /* initial piece setup */
-const char PieceSetup[] = {6, 3, 5, 7, 4, 5, 3, 6};
+const signed char PieceSetup[] = {6, 3, 5, 7, 4, 5, 3, 6};
 
 /* recursive minimax search, Side=moving side, Depth=depth */
 /* (Alpha,Beta)=window, Eval=current eval. score, epSqr=e.p. sqr. */
@@ -496,26 +497,26 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
     int LocalHashKeyLo = HashKeyLo;
     int LocalHashKeyHi = HashKeyHi;
 #endif
-    char Victim;
-    char PieceType;
-    char Piece;
+    unsigned char Victim;
+    unsigned char PieceType;
+    unsigned char Piece;
 
-    char FromSqr;
-    char ToSqr;
+    unsigned char FromSqr;
+    unsigned char ToSqr;
 
-    char BestFrom;
-    char BestTo;
+    unsigned char BestFrom;
+    unsigned char BestTo;
 
-    char CaptSqr;
-    char StartSqr;
+    unsigned char CaptSqr;
+    unsigned char StartSqr;
 
     // +++ mcu-max changed
     if (mcumax.user_callback)
         mcumax.user_callback(mcumax.user_callback_userdata);
         // --- mcu-max changed
 
-        /* lookup pos. in hash table */
 #ifdef MCUMAX_HASHING_ENABLED
+    /* lookup pos. in hash table */
     struct HashEntry *Hash = HashTab + ((HashKeyLo + Side * epSqr) & MCUMAX_HASH_TABLE_SIZE - 1);
 #endif
     /* adj. window: delay bonus */
@@ -540,9 +541,14 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
     /* iterative deepening loop */
     while ((IterDepth++ < Depth) || (IterDepth < 3) ||
            LastTo & (InputFrom == INF) &&
-               ((mcumax.nodes_count < mcumax.nodes_count_max) & (IterDepth < 98) ||                       /* root: deepen upto time */
-                (InputFrom = BestFrom, InputTo = (BestTo & ~M), IterDepth = 3))) /* time's up: go do best */
+               ((mcumax.nodes_count < mcumax.nodes_count_max) & (IterDepth < 98) || /* root: deepen upto time */
+                (InputFrom = BestFrom, InputTo = (BestTo & ~M), IterDepth = 3)))    /* time's up: go do best */
     {
+        // +++ mcu-max changed
+        if (mcumax.stop_search)
+            break;
+        // --- mcu-max changed
+
         /* start scan at prev. best */
         FromSqr = StartSqr = BestFrom;
 
@@ -563,7 +569,7 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
         do
         {
             /* scan board looking for */
-            Piece = Board[FromSqr];
+            Piece = mcumax.board[FromSqr];
 
             /* own piece (inefficient!) */
             if (Piece & Side)
@@ -590,12 +596,12 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
                         if (ToSqr & M)
                             break;
                         /* board edge hit */
-                        BestScore = (epSqr - S) & Board[epSqr] && ((ToSqr - epSqr) < 2) & ((epSqr - ToSqr) < 2) ? INF : BestScore; /* bad castling             */
-                                                                                                                                   /* shift capt.sqr. CaptSqr if e.p.*/
+                        BestScore = (epSqr - S) & mcumax.board[epSqr] && ((ToSqr - epSqr) < 2) & ((epSqr - ToSqr) < 2) ? INF : BestScore; /* bad castling             */
+                                                                                                                                          /* shift capt.sqr. CaptSqr if e.p.*/
                         if ((PieceType < 3) & (ToSqr == epSqr))
                             CaptSqr ^= 0x10;
 
-                        Victim = Board[CaptSqr];
+                        Victim = mcumax.board[CaptSqr];
 
                         /* capt. own, bad pawn mode */
                         if (Victim & Side | (PieceType < 3) & !(ToSqr - FromSqr & 7) - !Victim)
@@ -616,15 +622,15 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
                         /* remaining depth */
                         if ((IterDepth - !Victim) > 1)
                         {
-                            Score = (PieceType < 6) ? Board[FromSqr + 8] - Board[ToSqr + 8] : 0; /* center positional pts. */
-                            Board[RookSqr] = Board[CaptSqr] = Board[FromSqr] = 0;
+                            Score = (PieceType < 6) ? mcumax.board[FromSqr + 8] - mcumax.board[ToSqr + 8] : 0; /* center positional pts. */
+                            mcumax.board[RookSqr] = mcumax.board[CaptSqr] = mcumax.board[FromSqr] = 0;
 
                             /* do move, set non-virgin */
-                            Board[ToSqr] = Piece | 0x20;
+                            mcumax.board[ToSqr] = Piece | 0x20;
                             if (!(RookSqr & M))
                             {
                                 /* castling: put R & score */
-                                Board[SkipSqr] = Side + 6;
+                                mcumax.board[SkipSqr] = Side + 6;
                                 Score += 50;
                             }
 
@@ -634,16 +640,16 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
                             /* pawns: */
                             if (PieceType < 3)
                             {
-                                Score -= 9 * (((FromSqr - 2) & M || Board[FromSqr - 2] - Piece) +   /* structure, undefended    */
-                                              ((FromSqr + 2) & M || Board[FromSqr + 2] - Piece) - 1 /* squares plus bias */
-                                              + (Board[FromSqr ^ 16] == Side + 36))                 /* kling to non-virgin King */
-                                         - (NonPawnMaterial >> 2);                                  /* end-game Pawn-push bonus */
+                                Score -= 9 * (((FromSqr - 2) & M || mcumax.board[FromSqr - 2] - Piece) +   /* structure, undefended    */
+                                              ((FromSqr + 2) & M || mcumax.board[FromSqr + 2] - Piece) - 1 /* squares plus bias */
+                                              + (mcumax.board[FromSqr ^ 16] == Side + 36))                 /* kling to non-virgin King */
+                                         - (NonPawnMaterial >> 2);                                         /* end-game Pawn-push bonus */
 
                                 /* promotion or 6/7th bonus */
                                 NewAlpha = ToSqr + StepVec + 1 & S
                                                ? (647 - PieceType)
                                                : 2 * (Piece & (ToSqr + 0x10) & 0x20);
-                                Board[ToSqr] += NewAlpha;
+                                mcumax.board[ToSqr] += NewAlpha;
 
                                 /* change piece, add score */
                                 i += NewAlpha;
@@ -681,7 +687,7 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
                                 RootEval = -Eval - i;
 
                                 /* exit if legal & found */
-                                Rootep = SkipSqr;
+                                RootEP = SkipSqr;
 
                                 /* lock game in hash as draw */
 #ifdef MCUMAX_HASHING_ENABLED
@@ -701,10 +707,10 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
 #endif
 
                             /* undo move,RookSqr can be dummy */
-                            Board[RookSqr] = Side + 6;
-                            Board[SkipSqr] = Board[ToSqr] = 0;
-                            Board[FromSqr] = Piece;
-                            Board[CaptSqr] = Victim;
+                            mcumax.board[RookSqr] = Side + 6;
+                            mcumax.board[SkipSqr] = mcumax.board[ToSqr] = 0;
+                            mcumax.board[FromSqr] = Piece;
+                            mcumax.board[CaptSqr] = Victim;
                         }
 
                         if (Score > BestScore)
@@ -723,10 +729,10 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
                             goto replay;
                         }
 
-                        if ((FromSqr + StepVec - ToSqr) | (Piece & 0x20) |                                    /* not 1st step, moved before */
-                            (PieceType > 2) & ((PieceType - 4) | (j - 7) ||                                   /* no P & no lateral K move, */
-                                               Board[RookSqr = (FromSqr + 3) ^ (StepVec >> 1) & 7] - Side - 6 /* no virgin R in corner RookSqr, */
-                                               || Board[RookSqr ^ 1] | Board[RookSqr ^ 2])                    /* no 2 empty sq. next to R */
+                        if ((FromSqr + StepVec - ToSqr) | (Piece & 0x20) |                                           /* not 1st step, moved before */
+                            (PieceType > 2) & ((PieceType - 4) | (j - 7) ||                                          /* no P & no lateral K move, */
+                                               mcumax.board[RookSqr = (FromSqr + 3) ^ (StepVec >> 1) & 7] - Side - 6 /* no virgin R in corner RookSqr, */
+                                               || mcumax.board[RookSqr ^ 1] | mcumax.board[RookSqr ^ 2])             /* no 2 empty sq. next to R */
                         )
                             /* fake capt. for nonsliding */
                             Victim += PieceType < 5;
@@ -762,8 +768,9 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
             Hash->From = BestFrom | 8 * (BestScore > Alpha) | S * (BestScore < Beta);
             Hash->To = BestTo;
 
+            /* uncomment for Kibitz */
             /*if(LastTo)printf("%2d ply, %9d searched, score=%6d by %c%c%c%c\depth",IterDepth-1,Nodes-S,BestScore,
-                'Hash'+(BestFrom&7),'8'-(BestFrom>>4),'Hash'+(BestTo&7),'8'-(BestTo>>4&7)); /* uncomment for Kibitz */
+                'Hash'+(BestFrom&7),'8'-(BestFrom>>4),'Hash'+(BestTo&7),'8'-(BestTo>>4&7)); */
         }
 #endif
 
@@ -784,13 +791,13 @@ int Search(int Alpha, int Beta, int Eval, int epSqr, int LastTo, int Depth)
 void update_to_micromax()
 {
     Side = mcumax.current_side ^ (MCUMAX_WHITE | MCUMAX_BLACK);
-    Rootep = mcumax.en_passant_square;
+    RootEP = mcumax.en_passant_square;
 }
 
 void update_from_micromax()
 {
     mcumax.current_side = Side ^ (MCUMAX_WHITE | MCUMAX_BLACK);
-    mcumax.en_passant_square = Rootep;
+    mcumax.en_passant_square = RootEP;
 }
 
 void mcumax_reset()
@@ -798,16 +805,16 @@ void mcumax_reset()
     for (int x = 0; x < 8; x++)
     {
         // Setup pieces (left side)
-        Board[0x10 * 7 + x] = MCUMAX_WHITE | mcumax_board_setup[x];
-        Board[0x10 * 6 + x] = MCUMAX_WHITE | MCUMAX_PAWN_UPSTREAM;
+        mcumax.board[0x10 * 0 + x] = MCUMAX_BLACK | mcumax_board_setup[x];
+        mcumax.board[0x10 * 1 + x] = MCUMAX_BLACK | MCUMAX_PAWN_DOWNSTREAM;
         for (int y = 2; y < 6; y++)
-            Board[0x10 * y + x] = MCUMAX_EMPTY;
-        Board[0x10 * 1 + x] = MCUMAX_BLACK | MCUMAX_PAWN_DOWNSTREAM;
-        Board[0x10 * 0 + x] = MCUMAX_BLACK | mcumax_board_setup[x];
+            mcumax.board[0x10 * y + x] = MCUMAX_EMPTY;
+        mcumax.board[0x10 * 6 + x] = MCUMAX_WHITE | MCUMAX_PAWN_UPSTREAM;
+        mcumax.board[0x10 * 7 + x] = MCUMAX_WHITE | mcumax_board_setup[x];
 
         // Setup weights (right side)
         for (int y = 0; y < 8; y++)
-            Board[16 * y + x + 8] = (x - 4) * (x - 4) + (int)((y - 3.5) * (y - 3.5));
+            mcumax.board[16 * y + x + 8] = (x - 4) * (x - 4) + (int)((y - 3.5F) * (y - 3.5F));
     }
 
     mcumax.current_side = MCUMAX_WHITE;
@@ -815,7 +822,6 @@ void mcumax_reset()
 
     // To be removed:
     update_to_micromax();
-    mcumax.board = Board;
     RootEval = 0;
     NonPawnMaterial = 0;
 
@@ -833,7 +839,7 @@ mcumax_square mcumax_set_piece(mcumax_square square, mcumax_piece piece)
     if (square & MCUMAX_BOARD_MASK)
         return square;
 
-    Board[square] = piece ? piece | MCUMAX_MOVED : piece;
+    mcumax.board[square] = piece ? piece | MCUMAX_MOVED : piece;
 
     return square + 1;
 }
@@ -843,7 +849,7 @@ mcumax_piece mcumax_get_piece(mcumax_square square)
     if (square & MCUMAX_BOARD_MASK)
         return MCUMAX_EMPTY;
 
-    return Board[square] & 0x1f;
+    return mcumax.board[square] & 0x1f;
 }
 
 void mcumax_set_fen_position(const char *fen_string)
@@ -854,7 +860,7 @@ void mcumax_set_fen_position(const char *fen_string)
     int board_index = 0;
 
     char c;
-    while (c = *fen_string++)
+    while ((c = *fen_string++))
     {
         if (c == ' ')
         {
@@ -873,57 +879,77 @@ void mcumax_set_fen_position(const char *fen_string)
                 {
                 case '8':
                     board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+
                 case '7':
                     board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+
                 case '6':
                     board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+
                 case '5':
                     board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+
                 case '4':
                     board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+
                 case '3':
                     board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+
                 case '2':
                     board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
+
                 case '1':
                     board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
                     break;
+
                 case 'P':
                     board_index = mcumax_set_piece(board_index, MCUMAX_PAWN_UPSTREAM | MCUMAX_WHITE);
                     break;
+
                 case 'N':
                     board_index = mcumax_set_piece(board_index, MCUMAX_KNIGHT | MCUMAX_WHITE);
                     break;
+
                 case 'B':
                     board_index = mcumax_set_piece(board_index, MCUMAX_BISHOP | MCUMAX_WHITE);
                     break;
+
                 case 'R':
                     board_index = mcumax_set_piece(board_index, MCUMAX_ROOK | MCUMAX_WHITE);
                     break;
+
                 case 'Q':
                     board_index = mcumax_set_piece(board_index, MCUMAX_QUEEN | MCUMAX_WHITE);
                     break;
+
                 case 'K':
                     board_index = mcumax_set_piece(board_index, MCUMAX_KING | MCUMAX_WHITE);
                     break;
+
                 case 'p':
                     board_index = mcumax_set_piece(board_index, MCUMAX_PAWN_DOWNSTREAM | MCUMAX_BLACK);
                     break;
+
                 case 'n':
                     board_index = mcumax_set_piece(board_index, MCUMAX_KNIGHT | MCUMAX_BLACK);
                     break;
+
                 case 'b':
                     board_index = mcumax_set_piece(board_index, MCUMAX_BISHOP | MCUMAX_BLACK);
                     break;
+
                 case 'r':
                     board_index = mcumax_set_piece(board_index, MCUMAX_ROOK | MCUMAX_BLACK);
                     break;
+
                 case 'q':
                     board_index = mcumax_set_piece(board_index, MCUMAX_QUEEN | MCUMAX_BLACK);
                     break;
+
                 case 'k':
                     board_index = mcumax_set_piece(board_index, MCUMAX_KING | MCUMAX_BLACK);
                     break;
+
                 case '/':
                     board_index = (board_index < 0x80) ? (board_index & 0xf0) + 0x10 : board_index;
                     break;
@@ -937,6 +963,7 @@ void mcumax_set_fen_position(const char *fen_string)
             case 'w':
                 mcumax.current_side = MCUMAX_WHITE;
                 break;
+
             case 'b':
                 mcumax.current_side = MCUMAX_BLACK;
                 break;
@@ -950,19 +977,23 @@ void mcumax_set_fen_position(const char *fen_string)
                 mcumax.board[0x74] &= ~MCUMAX_MOVED;
                 mcumax.board[0x77] &= ~MCUMAX_MOVED;
                 break;
+
             case 'Q':
                 mcumax.board[0x74] &= ~MCUMAX_MOVED;
                 mcumax.board[0x70] &= ~MCUMAX_MOVED;
                 break;
+
             case 'k':
                 mcumax.board[0x04] &= ~MCUMAX_MOVED;
                 mcumax.board[0x07] &= ~MCUMAX_MOVED;
                 break;
+
             case 'q':
                 mcumax.board[0x04] &= ~MCUMAX_MOVED;
                 mcumax.board[0x00] &= ~MCUMAX_MOVED;
                 break;
             }
+
             break;
 
         case 3:
@@ -979,6 +1010,7 @@ void mcumax_set_fen_position(const char *fen_string)
                 mcumax.en_passant_square &= 0x7f;
                 mcumax.en_passant_square |= (c - 'a');
                 break;
+
             case '1':
             case '2':
             case '3':
@@ -991,6 +1023,7 @@ void mcumax_set_fen_position(const char *fen_string)
                 mcumax.en_passant_square |= 16 * ('8' - c);
                 break;
             }
+
             break;
         }
     }
@@ -1033,9 +1066,7 @@ bool mcumax_add_valid_move_callback(mcumax_move move)
 
 int mcumax_get_valid_moves(mcumax_move *valid_moves_buffer, int valid_moves_buffer_size)
 {
-    mcumax.board = Board;
-    mcumax.current_side = (Side == MCUMAX_BLACK) ? MCUMAX_WHITE : MCUMAX_BLACK;
-    mcumax.en_passant_square = Rootep;
+    update_from_micromax();
     mcumax.move_callback = mcumax_add_valid_move_callback;
 
     mcumax.valid_moves_buffer_size = valid_moves_buffer_size;
@@ -1049,43 +1080,54 @@ int mcumax_get_valid_moves(mcumax_move *valid_moves_buffer, int valid_moves_buff
 
 void mcumax_get_best_move(int nodes_count_max, mcumax_move *move)
 {
+    return;
 }
 
-void mcumax_play_best_move(int nodes_count_max, mcumax_move *move)
+bool mcumax_play_best_move(int nodes_count_max, mcumax_move *move)
 {
     mcumax.nodes_count_max = nodes_count_max;
     mcumax.nodes_count = 0;
 
     mcumax.valid_moves_buffer = NULL;
 
+    mcumax.stop_search = false;
+
     InputFrom = INF;
     update_to_micromax();
-    int Eval = Search(-INF, INF, RootEval, Rootep, 1, 3);
-    update_from_micromax();
+    int Eval = Search(-INF, INF, RootEval, RootEP, 1, 3);
+    if (!mcumax.stop_search)
+    {
+        update_from_micromax();
 
-    if (Eval > (-INF + 1))
-        *move = (mcumax_move){InputFrom, InputTo};
-    else
-        *move = (mcumax_move){MCUMAX_INVALID, MCUMAX_INVALID};
+        if (Eval > (-INF + 1))
+            *move = (mcumax_move){InputFrom, InputTo};
+        else
+            *move = (mcumax_move){MCUMAX_INVALID, MCUMAX_INVALID};
+    }
+
+    return !mcumax.stop_search;
 }
 
 void mcumax_stop_search()
 {
-    mcumax.nodes_count = 0;
+    mcumax.stop_search = true;
 }
 
-void mcumax_play_move(mcumax_move move)
+bool mcumax_play_move(mcumax_move move)
 {
     mcumax.nodes_count = 0;
 
     mcumax.valid_moves_buffer = NULL;
 
+    mcumax.stop_search = false;
+
     InputFrom = move.from;
     InputTo = move.to;
 
     update_to_micromax();
-    Search(-INF, INF, RootEval, Rootep, 1, 3);
-    update_from_micromax();
+    Search(-INF, INF, RootEval, RootEP, 1, 3);
+    if (!mcumax.stop_search)
+        update_from_micromax();
 
-    return;
+    return !mcumax.stop_search;
 }

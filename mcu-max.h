@@ -1,5 +1,6 @@
 /*
- * mcu-max chess engine for low-resource MCUs
+ * mcu-max 0.9.1
+ * Chess engine for low-resource MCUs
  *
  * (C) 2022 Gissio
  *
@@ -114,8 +115,6 @@ void mcumax_stop_search();
  * @brief Play move.
  *
  * @param move The move.
- *
- * @return Game not finished.
  */
 void mcumax_play_move(mcumax_move move);
 
