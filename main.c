@@ -14,6 +14,9 @@
 
 #define MAIN_VALID_MOVES_NUM 512
 
+#define DEFAULT_NODE_MAX 1000000
+#define DEFAULT_DEPTH_MAX 30
+
 void print_board()
 {
     const char *symbols = ".PPNKBRQ.ppnkbrq";
@@ -149,7 +152,8 @@ bool send_uci_command(char *line)
     }
     else if (!strcmp(token, "go"))
     {
-        mcumax_move move = mcumax_search_best_move(1, 30);
+        mcumax_move move = mcumax_search_best_move(DEFAULT_NODE_MAX,
+                                                   DEFAULT_DEPTH_MAX);
         mcumax_play_move(move);
 
         printf("bestmove ");
