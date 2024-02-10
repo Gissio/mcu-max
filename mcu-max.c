@@ -703,7 +703,7 @@ void mcumax_set_fen_position(const char *fen_string)
                 case '3':
                 case '2':
                 case '1':
-                    for (uint32_t i = 0; i < (c - '0'); i++)
+                    for (int32_t i = 0; i < (c - '0'); i++)
                         board_index = mcumax_set_piece(board_index, MCUMAX_EMPTY);
 
                     break;
