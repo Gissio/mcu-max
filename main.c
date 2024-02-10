@@ -1,7 +1,7 @@
 /*
  * mcu-max UCI chess interface
  *
- * (C) 2022 Gissio
+ * (C) 2022-2024 Gissio
  *
  * License: MIT
  */
@@ -13,9 +13,6 @@
 #include "mcu-max.h"
 
 #define MAIN_VALID_MOVES_NUM 512
-
-#define DEFAULT_NODE_MAX 1000000
-#define DEFAULT_DEPTH_MAX 30
 
 void print_board()
 {
@@ -152,8 +149,7 @@ bool send_uci_command(char *line)
     }
     else if (!strcmp(token, "go"))
     {
-        mcumax_move move = mcumax_search_best_move(DEFAULT_NODE_MAX,
-                                                   DEFAULT_DEPTH_MAX);
+        mcumax_move move = mcumax_search_best_move(1, 30);
         mcumax_play_move(move);
 
         printf("bestmove ");
