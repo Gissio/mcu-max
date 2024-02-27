@@ -1,3 +1,5 @@
+![Title](img/mcumax-title.png)
+
 ## Overview
 
 mcu-max is an MCU-optimized C-language wrapper for the [micro-Max][micro-max-link] chess engine.
