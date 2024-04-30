@@ -1,4 +1,4 @@
-![Title](img/mcumax-title.png)
+![Title](docs/img/mcumax-title.png)
 
 ## Overview
 
