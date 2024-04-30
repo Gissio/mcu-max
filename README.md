@@ -6,7 +6,7 @@ mcu-max is an MCU-optimized C-language chess engine based on [micro-Max][micro-m
 
 mcu-max comes with an Arduino serial port example, and a UCI example for interfacing mcu-max with UCI-compatible chess GUIs.
 
-When running on devices with little memory, you might want ot adjust the max depth value to avoid stack overflows.
+When running on devices with little memory, you might want to adjust the max depth value to avoid stack overflows.
 
 Download the [Rad Pro simulator](https://www.github.com/gissio/radpro/releases) to try mcu-max.
 
