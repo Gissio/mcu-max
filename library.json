@@ -1,0 +1,20 @@
+{
+    "name": "mcu-max",
+    "version": "1.0.2",
+    "keywords": "board-game, chess, chess-engine, embedded, fen, mcu, microcontroller, uci, uci-chess-engine",
+    "description": "An MCU-optimized C-language chess engine based on micro-Max.",
+	"license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Gissio/mcu-max.git"
+    },
+    "authors": [
+        {
+            "name": "Gissio",
+            "maintainer": true
+        }
+    ],
+	"homepage": "https://github.com/Gissio/mcu-max",
+    "frameworks": "*",
+    "platforms": "*"
+}
