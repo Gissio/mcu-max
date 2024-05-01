@@ -33,15 +33,13 @@ void print_board() {
   Serial.print("Move: ");
 }
 
-void print_square(mcumax_square square)
-{
+void print_square(mcumax_square square) {
   Serial.print((char)('a' + ((square & 0x07) >> 0)));
   Serial.print((char)('1' + 7 - ((square & 0x70) >> 4)));
 }
 
 void print_move(mcumax_move move) {
-  if ((move.from == MCUMAX_SQUARE_INVALID) ||
-    (move.to == MCUMAX_SQUARE_INVALID))
+  if ((move.from == MCUMAX_SQUARE_INVALID) || (move.to == MCUMAX_SQUARE_INVALID))
     Serial.print("(none)");
   else {
     print_square(move.from);
@@ -49,17 +47,16 @@ void print_move(mcumax_move move) {
   }
 }
 
-mcumax_square get_square(char *s)
-{
-    mcumax_square rank = s[0] - 'a';
-    if (rank > 7)
-        return MCUMAX_SQUARE_INVALID;
+mcumax_square get_square(char *s) {
+  mcumax_square rank = s[0] - 'a';
+  if (rank > 7)
+    return MCUMAX_SQUARE_INVALID;
 
-    mcumax_square file = '8' - s[1];
-    if (file > 7)
-        return MCUMAX_SQUARE_INVALID;
+  mcumax_square file = '8' - s[1];
+  if (file > 7)
+    return MCUMAX_SQUARE_INVALID;
 
-    return 0x10 * file + rank;
+  return 0x10 * file + rank;
 }
 
 char serial_input[5];
@@ -69,8 +66,7 @@ void init_serial_input() {
 }
 
 bool get_serial_input() {
-  if (Serial.available())
-  {
+  if (Serial.available()) {
     char s[2];
     s[0] = Serial.read();
     s[1] = '\0';
@@ -84,8 +80,7 @@ bool get_serial_input() {
         s[n - 1] = '\0';
     }
 
-    if (s[0] >= ' ')
-    {
+    if (s[0] >= ' ') {
       if (strlen(serial_input) < 4)
         strcat(serial_input, s);
 
@@ -122,9 +117,9 @@ void loop() {
   Serial.println("");
 
   if (!mcumax_play_move((mcumax_move){
-    get_square(serial_input + 0),
-    get_square(serial_input + 2),
-  }))
+        get_square(serial_input + 0),
+        get_square(serial_input + 2),
+      }))
     Serial.println("Invalid move.");
   else {
     mcumax_move move = mcumax_search_best_move(MCUMAX_NODE_MAX, MCUMAX_DEPTH_MAX);
