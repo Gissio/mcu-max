@@ -2,9 +2,9 @@
 
 ## Overview
 
-mcu-max is an MCU-optimized C-language chess engine based on [micro-Max][micro-max-link].
+mcu-max is an MCU-optimized C-language chess game engine based on [micro-Max][micro-max-link].
 
-mcu-max comes with an Arduino serial port example, and a UCI example for interfacing mcu-max with UCI-compatible chess GUIs.
+mcu-max comes with an Arduino serial port example, and a UCI chess interface example for testing mcu-max from UCI-compatible chess game GUIs.
 
 When running on devices with little memory, you might want to adjust the max depth value to avoid stack overflows.
 

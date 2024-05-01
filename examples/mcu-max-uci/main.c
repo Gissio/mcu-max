@@ -1,5 +1,5 @@
 /*
- * mcu-max UCI interface example
+ * mcu-max UCI chess interface example
  *
  * (C) 2022-2024 Gissio
  *
