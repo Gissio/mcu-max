@@ -20,6 +20,8 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+#define MCUMAX_FEN_MAX_LENGTH 100
+
 #define MCUMAX_ID "mcu-max 1.0.6"
 #define MCUMAX_AUTHOR "Gissio"
 
@@ -120,6 +122,14 @@ void mcumax_set_callback(mcumax_callback callback, void *userdata);
  * @brief Stops the current search. To be called from the user callback.
  */
 void mcumax_stop_search(void);
+
+/**
+ * @brief Retourne la notation FEN de la position courante.
+ *
+ * @param fen_buffer Buffer de sortie pour la chaîne FEN.
+ * @param buffer_size Taille du buffer de sortie.
+ */
+void mcumax_get_fen(char *fen_buffer, size_t buffer_size);
 
 #ifdef __cplusplus
 }

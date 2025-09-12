@@ -17,6 +17,12 @@
 void print_board() {
   const char *symbols = ".PPNKBRQ.ppnkbrq";
 
+  // Affiche la FEN courante
+  char fen[MCUMAX_FEN_MAX_LENGTH];
+  mcumax_get_fen(fen, sizeof(fen));
+  Serial.print("FEN: ");
+  Serial.println(fen);
+
   Serial.println("");
   Serial.println("  +-----------------+");
 
@@ -108,6 +114,11 @@ void setup() {
   Serial.println("Enter moves as [from square][to square]. E.g.: e2e4");
 
   print_board();
+  // Affiche la FEN après chaque coup
+  char fen[MCUMAX_FEN_MAX_LENGTH];
+  mcumax_get_fen(fen, sizeof(fen));
+  Serial.print("FEN: ");
+  Serial.println(fen);
 }
 
 void loop() {

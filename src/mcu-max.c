@@ -16,6 +16,8 @@
 
 #include "mcu-max.h"
 
+#include <ctype.h>
+
 // Configuration
 // #define MCUMAX_HASHING_ENABLED
 
@@ -69,6 +71,79 @@ struct
     uint32_t valid_moves_buffer_size;
     uint32_t valid_moves_num;
 } mcumax;
+
+// Helper to get the FEN symbol for a piece
+static char mcumax_piece_to_fen(uint8_t piece) {
+    switch (piece & 0b111) {
+        case MCUMAX_PAWN_UPSTREAM:
+        case MCUMAX_PAWN_DOWNSTREAM:
+            return (piece & MCUMAX_BLACK) ? 'p' : 'P';
+        case MCUMAX_KNIGHT:
+            return (piece & MCUMAX_BLACK) ? 'n' : 'N';
+        case MCUMAX_BISHOP:
+            return (piece & MCUMAX_BLACK) ? 'b' : 'B';
+        case MCUMAX_ROOK:
+            return (piece & MCUMAX_BLACK) ? 'r' : 'R';
+        case MCUMAX_QUEEN:
+            return (piece & MCUMAX_BLACK) ? 'q' : 'Q';
+        case MCUMAX_KING:
+            return (piece & MCUMAX_BLACK) ? 'k' : 'K';
+        default:
+            return 0;
+    }
+}
+
+void mcumax_get_fen(char *fen_buffer, size_t buffer_size) {
+    // Build the "piece placement" part
+    char fen[MCUMAX_FEN_MAX_LENGTH] = {0};
+    int idx = 0;
+    for (int rank = 7; rank >= 0; rank--) {
+        int empty = 0;
+        for (int file = 0; file < 8; file++) {
+            uint8_t sq = (rank << 4) | file;
+            uint8_t piece = mcumax.board[sq];
+            char symbol = mcumax_piece_to_fen(piece);
+            if (symbol) {
+                if (empty > 0) {
+                    if (idx < MCUMAX_FEN_MAX_LENGTH - 1) fen[idx++] = '0' + empty;
+                    empty = 0;
+                }
+                if (idx < MCUMAX_FEN_MAX_LENGTH - 1) fen[idx++] = symbol;
+            } else {
+                empty++;
+            }
+        }
+        if (empty > 0) {
+            if (idx < MCUMAX_FEN_MAX_LENGTH - 1) fen[idx++] = '0' + empty;
+        }
+        if (rank > 0 && idx < MCUMAX_FEN_MAX_LENGTH - 1) fen[idx++] = '/';
+    }
+    fen[idx] = '\0';
+
+    // Side to move
+    char side = (mcumax.current_side & MCUMAX_BOARD_WHITE) ? 'w' : 'b';
+
+    // Castling rights (simplified, to be adapted if needed)
+    char castling[5] = "KQkq";
+    // For a minimal engine, use "-" if not handled
+
+    // En passant square
+    char enpassant[3] = "-";
+    if (mcumax.en_passant_square != MCUMAX_SQUARE_INVALID) {
+        int ep_file = mcumax.en_passant_square & 0xF;
+        int ep_rank = (mcumax.en_passant_square >> 4);
+        enpassant[0] = 'a' + ep_file;
+        enpassant[1] = '1' + ep_rank;
+        enpassant[2] = '\0';
+    }
+
+    // Halfmove and fullmove counters (not handled here, set to 0 and 1)
+    int halfmove = 0;
+    int fullmove = 1;
+
+    // Final formatting
+    snprintf(fen_buffer, buffer_size, "%s %c %s %s %d %d", fen, side, castling, enpassant, halfmove, fullmove);
+}
 
 static const int8_t mcumax_capture_values[] = {
     0, 2, 2, 7, -1, 8, 12, 23};
