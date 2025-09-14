@@ -1,3 +1,10 @@
+/**
+ * @brief Detects if the king of the given side is checkmated.
+ *
+ * @param side MCUMAX_BOARD_WHITE or MCUMAX_BOARD_BLACK
+ * @return true if the king is checkmated, false otherwise
+ */
+bool mcumax_is_checkmate(uint8_t side);
 /*
  * mcu-max
  * Chess game engine for low-resource MCUs
@@ -16,6 +23,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @brief Détecte si le roi du côté donné est en échec.
+ *
+ * @param side MCUMAX_BOARD_WHITE ou MCUMAX_BOARD_BLACK
+ * @return true si le roi est attaqué, false sinon
+ */
+bool mcumax_is_check(uint8_t side);
+
 
 #include <stdbool.h>
 #include <stdint.h>

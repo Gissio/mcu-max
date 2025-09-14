@@ -6,6 +6,8 @@
  * License: MIT
  */
 
+#include <Arduino.h>
+#include <string.h>
 #include <mcu-max.h>
 
 // Modify these values to increase the AI strength:
@@ -122,6 +124,12 @@ void setup() {
 }
 
 void loop() {
+  // Check if white is checkmated before its move
+  if (mcumax_is_checkmate(MCUMAX_BOARD_WHITE)) {
+    Serial.println("White is checkmated!");
+    return;
+  }
+
   if (!get_serial_input())
     return;
 
@@ -142,16 +150,37 @@ void loop() {
       (valid_moves[i].to == move.to))
       is_valid_move = true;
 
-  if (!is_valid_move || !mcumax_play_move(move))
+  if (!is_valid_move || !mcumax_play_move(move)) {
     Serial.println("Invalid move.");
-  else {
+  } else {
+    // Check if black is checkmated before its move
+    if (mcumax_is_checkmate(MCUMAX_BOARD_BLACK)) {
+      Serial.println("Black is checkmated!");
+      init_serial_input();
+      digitalWrite(LED_BUILTIN, LOW);
+      print_board();
+      return;
+    }
+
+    // Check if black is in check after white's move
+    if (mcumax_is_check(MCUMAX_BOARD_BLACK)) {
+      Serial.println("Black is in check!");
+    }
+
     mcumax_move move = mcumax_search_best_move(MCUMAX_NODE_MAX, MCUMAX_DEPTH_MAX);
-    if (move.from == MCUMAX_SQUARE_INVALID)
+    if (move.from == MCUMAX_SQUARE_INVALID) {
       Serial.println("Game over.");
-    else if (mcumax_play_move(move)) {
+    } else if (mcumax_play_move(move)) {
       Serial.print("Opponent moves: ");
       print_move(move);
       Serial.println("");
+      // Check if white is in check after black's move
+      if (mcumax_is_check(MCUMAX_BOARD_WHITE)) {
+        Serial.println("White is in check!");
+      }
+      if (mcumax_is_check(MCUMAX_BOARD_BLACK)) {
+        Serial.println("Black is in check!");
+      }
     }
   }
 

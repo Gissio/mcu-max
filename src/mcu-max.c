@@ -72,6 +72,68 @@ struct
     uint32_t valid_moves_num;
 } mcumax;
 
+
+// Explicit checkmate detection for a given side
+bool mcumax_is_checkmate(uint8_t side)
+{
+    // Save current side
+    uint8_t original_side = mcumax.current_side;
+    mcumax.current_side = side;
+
+    // Generate all valid moves for the side
+    mcumax_move moves[128];
+    uint32_t num_moves = mcumax_search_valid_moves(moves, 128);
+
+    // If there are valid moves, not checkmate
+    if (num_moves > 0) {
+        mcumax.current_side = original_side;
+        return false;
+    }
+
+    // If no moves, check if the king is in check
+    bool is_check = mcumax_is_check(side);
+    mcumax.current_side = original_side;
+    return is_check;
+}
+
+// Explicit check detection for a given side
+bool mcumax_is_check(uint8_t side)
+{
+    // Find the king position for the given side
+    uint8_t king_square = MCUMAX_SQUARE_INVALID;
+    for (uint8_t sq = 0; sq < 0x80; sq++)
+    {
+        uint8_t piece = mcumax_get_piece(sq);
+        if ((piece & 0b111) == MCUMAX_KING && (piece & 0x18) == side)
+        {
+            king_square = sq;
+            break;
+        }
+    }
+    if (king_square == MCUMAX_SQUARE_INVALID)
+        return false;
+
+    // Save the current side
+    uint8_t original_side = mcumax.current_side;
+    // Switch to opponent side
+    mcumax.current_side = (side == MCUMAX_BOARD_WHITE) ? MCUMAX_BOARD_BLACK : MCUMAX_BOARD_WHITE;
+
+    // Generate all valid moves for the opponent
+    mcumax_move moves[128];
+    uint32_t num_moves = mcumax_search_valid_moves(moves, 128);
+
+    // Restore the current side
+    mcumax.current_side = original_side;
+
+    // Check if the king is attacked
+    for (uint32_t i = 0; i < num_moves; i++)
+    {
+        if (moves[i].to == king_square)
+            return true;
+    }
+    return false;
+}
+
 // Helper to get the FEN symbol for a piece
 static char mcumax_piece_to_fen(uint8_t piece) {
     switch (piece & 0b111) {
