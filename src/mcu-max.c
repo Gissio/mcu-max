@@ -103,7 +103,7 @@ bool mcumax_is_check(uint8_t side)
     uint8_t king_square = MCUMAX_SQUARE_INVALID;
     for (uint8_t sq = 0; sq < 0x80; sq++)
     {
-        uint8_t piece = mcumax_get_piece(sq);
+        uint8_t piece = mcumax.board[sq];
         if ((piece & 0b111) == MCUMAX_KING && (piece & 0x18) == side)
         {
             king_square = sq;
