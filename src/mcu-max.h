@@ -19,6 +19,10 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
+
+// Prototype pour vérifier si le roi peut être capturé
+bool canKingBeCaptured(const void *board, uint8_t kingColor);
 
 #define MCUMAX_FEN_MAX_LENGTH 100
 
