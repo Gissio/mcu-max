@@ -19,6 +19,12 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
+
+// Prototype pour vérifier si le roi peut être capturé
+bool canKingBeCaptured(const void *board, uint8_t kingColor);
+
+#define MCUMAX_FEN_MAX_LENGTH 100
 
 #define MCUMAX_ID "mcu-max 1.0.6"
 #define MCUMAX_AUTHOR "Gissio"
@@ -57,6 +63,10 @@ enum
     // Bits 3: color
     MCUMAX_BLACK = 0x8,
 };
+
+bool mcumax_is_checkmate(uint8_t side);
+
+bool mcumax_is_check(uint8_t side);
 
 /**
  * @brief Resets the engine state.
@@ -120,6 +130,14 @@ void mcumax_set_callback(mcumax_callback callback, void *userdata);
  * @brief Stops the current search. To be called from the user callback.
  */
 void mcumax_stop_search(void);
+
+/**
+ * @brief Retourne la notation FEN de la position courante.
+ *
+ * @param fen_buffer Buffer de sortie pour la chaîne FEN.
+ * @param buffer_size Taille du buffer de sortie.
+ */
+void mcumax_get_fen(char *fen_buffer, size_t buffer_size);
 
 #ifdef __cplusplus
 }

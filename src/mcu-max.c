@@ -16,6 +16,8 @@
 
 #include "mcu-max.h"
 
+#include <ctype.h>
+
 // Configuration
 // #define MCUMAX_HASHING_ENABLED
 
@@ -69,6 +71,141 @@ struct
     uint32_t valid_moves_buffer_size;
     uint32_t valid_moves_num;
 } mcumax;
+
+
+// Explicit checkmate detection for a given side
+bool mcumax_is_checkmate(uint8_t side)
+{
+    // Save current side
+    uint8_t original_side = mcumax.current_side;
+    mcumax.current_side = side;
+
+    // Generate all valid moves for the side
+    mcumax_move moves[128];
+    uint32_t num_moves = mcumax_search_valid_moves(moves, 128);
+
+    // If there are valid moves, not checkmate
+    if (num_moves > 0) {
+        mcumax.current_side = original_side;
+        return false;
+    }
+
+    // If no moves, check if the king is in check
+    bool is_check = mcumax_is_check(side);
+    mcumax.current_side = original_side;
+    return is_check;
+}
+
+// Explicit check detection for a given side
+bool mcumax_is_check(uint8_t side)
+{
+    // Find the king position for the given side
+    uint8_t king_square = MCUMAX_SQUARE_INVALID;
+    for (uint8_t sq = 0; sq < 0x80; sq++)
+    {
+        uint8_t piece = mcumax.board[sq];
+        if ((piece & 0b111) == MCUMAX_KING && (piece & 0x18) == side)
+        {
+            king_square = sq;
+            break;
+        }
+    }
+    if (king_square == MCUMAX_SQUARE_INVALID)
+        return false;
+
+    // Save the current side
+    uint8_t original_side = mcumax.current_side;
+    // Switch to opponent side
+    mcumax.current_side = (side == MCUMAX_BOARD_WHITE) ? MCUMAX_BOARD_BLACK : MCUMAX_BOARD_WHITE;
+
+    // Generate all valid moves for the opponent
+    mcumax_move moves[128];
+    uint32_t num_moves = mcumax_search_valid_moves(moves, 128);
+
+    // Restore the current side
+    mcumax.current_side = original_side;
+
+    // Check if the king is attacked
+    for (uint32_t i = 0; i < num_moves; i++)
+    {
+        if (moves[i].to == king_square)
+            return true;
+    }
+    return false;
+}
+
+// Helper to get the FEN symbol for a piece
+static char mcumax_piece_to_fen(uint8_t piece) {
+    switch (piece & 0b111) {
+        case MCUMAX_PAWN_UPSTREAM:
+        case MCUMAX_PAWN_DOWNSTREAM:
+            return (piece & MCUMAX_BLACK) ? 'p' : 'P';
+        case MCUMAX_KNIGHT:
+            return (piece & MCUMAX_BLACK) ? 'n' : 'N';
+        case MCUMAX_BISHOP:
+            return (piece & MCUMAX_BLACK) ? 'b' : 'B';
+        case MCUMAX_ROOK:
+            return (piece & MCUMAX_BLACK) ? 'r' : 'R';
+        case MCUMAX_QUEEN:
+            return (piece & MCUMAX_BLACK) ? 'q' : 'Q';
+        case MCUMAX_KING:
+            return (piece & MCUMAX_BLACK) ? 'k' : 'K';
+        default:
+            return 0;
+    }
+}
+
+void mcumax_get_fen(char *fen_buffer, size_t buffer_size) {
+    // Build the "piece placement" part
+    char fen[MCUMAX_FEN_MAX_LENGTH] = {0};
+    int idx = 0;
+    for (int rank = 7; rank >= 0; rank--) {
+        int empty = 0;
+        for (int file = 0; file < 8; file++) {
+            uint8_t sq = (rank << 4) | file;
+            uint8_t piece = mcumax.board[sq];
+            char symbol = mcumax_piece_to_fen(piece);
+            if (symbol) {
+                if (empty > 0) {
+                    if (idx < MCUMAX_FEN_MAX_LENGTH - 1) fen[idx++] = '0' + empty;
+                    empty = 0;
+                }
+                if (idx < MCUMAX_FEN_MAX_LENGTH - 1) fen[idx++] = symbol;
+            } else {
+                empty++;
+            }
+        }
+        if (empty > 0) {
+            if (idx < MCUMAX_FEN_MAX_LENGTH - 1) fen[idx++] = '0' + empty;
+        }
+        if (rank > 0 && idx < MCUMAX_FEN_MAX_LENGTH - 1) fen[idx++] = '/';
+    }
+    fen[idx] = '\0';
+
+    // Side to move
+    char side = (mcumax.current_side & MCUMAX_BOARD_WHITE) ? 'w' : 'b';
+
+    // Castling rights (simplified, to be adapted if needed)
+    char castling[5] = "KQkq";
+    // For a minimal engine, use "-" if not handled
+
+    // En passant square
+    char enpassant[3] = "-";
+    if (mcumax.en_passant_square != MCUMAX_SQUARE_INVALID) {
+        int ep_file = mcumax.en_passant_square & 0xF;
+        int ep_rank = (mcumax.en_passant_square >> 4);
+        enpassant[0] = 'a' + ep_file;
+        enpassant[1] = '1' + ep_rank;
+        enpassant[2] = '\0';
+    }
+
+    // Halfmove and fullmove counters (not handled here, set to 0 and 1)
+    int halfmove = 0;
+    int fullmove = 1;
+
+    // Final formatting
+    snprintf(fen_buffer, buffer_size, "%s %c %s %s %d %d", fen, side, castling, enpassant, halfmove, fullmove);
+}
 
 static const int8_t mcumax_capture_values[] = {
     0, 2, 2, 7, -1, 8, 12, 23};
