@@ -35,40 +35,7 @@ enum mcumax_mode
     MCUMAX_PLAY_MOVE,
 };
 
-struct
-{
-    // Board: first half of 16x8 + dummy
-    uint8_t board[0x80 + 1];
-    uint8_t current_side;
-
-    // Engine
-    int32_t score;
-    uint8_t en_passant_square;
-    int32_t non_pawn_material;
-
-#ifdef MCUMAX_HASHING_ENABLED
-    uint32_t hash_key;
-    uint32_t hash_key2;
-#endif
-
-    // Interface
-    uint8_t square_from; // Selected move
-    uint8_t square_to;
-
-    uint32_t node_count;
-    uint32_t node_max;
-    uint32_t depth_max;
-
-    bool stop_search;
-
-    // Extra
-    mcumax_callback user_callback;
-    void *user_data;
-
-    mcumax_move *valid_moves_buffer;
-    uint32_t valid_moves_buffer_size;
-    uint32_t valid_moves_num;
-} mcumax;
+mcumax_struct mcumax;
 
 static const int8_t mcumax_capture_values[] = {
     0, 2, 2, 7, -1, 8, 12, 23};
@@ -919,4 +886,414 @@ void mcumax_set_callback(mcumax_callback callback, void *userdata)
 void mcumax_stop_search(void)
 {
     mcumax.stop_search = true;
+}
+
+bool mcumax_is_in_check(uint8_t side) {
+    uint8_t king_mask = (side == MCUMAX_BOARD_WHITE) ? MCUMAX_BOARD_WHITE : MCUMAX_BOARD_BLACK;
+    uint8_t enemy_mask = (side == MCUMAX_BOARD_WHITE) ? MCUMAX_BOARD_BLACK : MCUMAX_BOARD_WHITE;
+    mcumax_square king_square = MCUMAX_SQUARE_INVALID;
+    
+    // Find the king
+    for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < 8; x++) {
+            mcumax_square sq = y * 16 + x;
+            uint8_t raw = mcumax.board[sq];
+            if ((raw & king_mask) && ((raw & 0b111) == MCUMAX_KING)) {
+                king_square = sq;
+                break;
+            }
+        }
+        if (king_square != MCUMAX_SQUARE_INVALID) break;
+    }
+    
+    if (king_square == MCUMAX_SQUARE_INVALID)
+        return false;
+    
+    // Directions: horizontal/vertical then diagonals
+    int directions[8] = {1, -1, 16, -16, 15, -15, 17, -17};
+    
+    // Scan rays for rooks, bishops and queens
+    for (int d = 0; d < 8; d++) {
+        int current_sq = king_square;
+        
+        while (1) {
+            current_sq += directions[d];
+            
+            // Check 0x88 board limits
+            if (current_sq & 0x88) {
+                break;
+            }
+            
+            uint8_t raw = mcumax.board[current_sq];
+            if (raw) {
+                // If it's an enemy piece
+                if (raw & enemy_mask) {
+                    int type = raw & 0b111;
+                    // Rook or queen on lines/columns (directions 0-3)
+                    if ((d < 4) && (type == MCUMAX_ROOK || type == MCUMAX_QUEEN)) {
+                        return true;
+                    }
+                    // Bishop or queen on diagonals (directions 4-7)
+                    if ((d >= 4) && (type == MCUMAX_BISHOP || type == MCUMAX_QUEEN)) {
+                        return true;
+                    }
+                }
+                // A piece blocks the ray, stop
+                break;
+            }
+        }
+    }
+    
+    // Check knights
+    int knight_moves[8] = {14, 18, 31, 33, -14, -18, -31, -33};
+    for (int i = 0; i < 8; i++) {
+        int sq = king_square + knight_moves[i];
+        if (!(sq & 0x88)) {
+            uint8_t raw = mcumax.board[sq];
+            if ((raw & enemy_mask) && ((raw & 0b111) == MCUMAX_KNIGHT)) {
+                return true;
+            }
+        }
+    }
+    
+    // Check pawns
+    int pawn_dir = (side == MCUMAX_BOARD_WHITE) ? -16 : 16;
+    int pawn_attacks[2] = {pawn_dir - 1, pawn_dir + 1};
+    for (int i = 0; i < 2; i++) {
+        int sq = king_square + pawn_attacks[i];
+        if (!(sq & 0x88)) {
+            uint8_t raw = mcumax.board[sq];
+            if (raw & enemy_mask) {
+                int type = raw & 0b111;
+                // White pawn attacks upward (UPSTREAM), black pawn downward (DOWNSTREAM)
+                if ((side == MCUMAX_BOARD_WHITE && type == MCUMAX_PAWN_DOWNSTREAM) ||
+                    (side == MCUMAX_BOARD_BLACK && type == MCUMAX_PAWN_UPSTREAM)) {
+                    return true;
+                }
+            }
+        }
+    }
+    
+    // Check opposing king (adjacent attack)
+    int king_moves[8] = {1, -1, 16, -16, 15, -15, 17, -17};
+    for (int i = 0; i < 8; i++) {
+        int sq = king_square + king_moves[i];
+        if (!(sq & 0x88)) {
+            uint8_t raw = mcumax.board[sq];
+            if ((raw & enemy_mask) && ((raw & 0b111) == MCUMAX_KING)) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+bool mcumax_is_in_checkmate(uint8_t side) {
+    // 1. Check if the king is in check (necessary condition for mate)
+    if (!mcumax_is_in_check(side)) {
+        return false; // Not in check = not mate
+    }
+    
+    // 2. Save the current engine state
+    uint8_t board_backup[sizeof(mcumax.board)];
+    memcpy(board_backup, mcumax.board, sizeof(mcumax.board));
+    uint8_t current_side_backup = mcumax.current_side;
+    uint8_t en_passant_backup = mcumax.en_passant_square;
+    int32_t score_backup = mcumax.score;
+    int32_t npm_backup = mcumax.non_pawn_material;
+    
+    // 3. Make sure it's the tested side's turn
+    mcumax.current_side = side;
+    
+    // 4. Generate all possible legal moves
+    mcumax_move valid_moves[256]; // Buffer large enough for all possible moves
+    uint32_t moves_count = mcumax_search_valid_moves(valid_moves, 256);
+    
+    // 5. Test each move to see if it gets the king out of check
+    for (uint32_t i = 0; i < moves_count; i++) {
+        // Save state before playing the move
+        uint8_t temp_board[sizeof(mcumax.board)];
+        memcpy(temp_board, mcumax.board, sizeof(mcumax.board));
+        uint8_t temp_en_passant = mcumax.en_passant_square;
+        int32_t temp_score = mcumax.score;
+        int32_t temp_npm = mcumax.non_pawn_material;
+        
+        // Play the move temporarily
+        if (mcumax_play_move(valid_moves[i])) {
+            // Check if the king is still in check after this move
+            bool still_in_check = mcumax_is_in_check(side);
+            
+            // Restore state
+            memcpy(mcumax.board, temp_board, sizeof(mcumax.board));
+            mcumax.en_passant_square = temp_en_passant;
+            mcumax.score = temp_score;
+            mcumax.non_pawn_material = temp_npm;
+            mcumax.current_side = side;
+            
+            // If this move gets the king out of check, it's not mate
+            if (!still_in_check) {
+                // Restore full engine state
+                memcpy(mcumax.board, board_backup, sizeof(mcumax.board));
+                mcumax.current_side = current_side_backup;
+                mcumax.en_passant_square = en_passant_backup;
+                mcumax.score = score_backup;
+                mcumax.non_pawn_material = npm_backup;
+                return false;
+            }
+        } else {
+            // The move could not be played, restore anyway
+            memcpy(mcumax.board, temp_board, sizeof(mcumax.board));
+            mcumax.en_passant_square = temp_en_passant;
+            mcumax.score = temp_score;
+            mcumax.non_pawn_material = temp_npm;
+            mcumax.current_side = side;
+        }
+    }
+    
+    // 6. Restore full engine state
+    memcpy(mcumax.board, board_backup, sizeof(mcumax.board));
+    mcumax.current_side = current_side_backup;
+    mcumax.en_passant_square = en_passant_backup;
+    mcumax.score = score_backup;
+    mcumax.non_pawn_material = npm_backup;
+    
+    // 7. If no move gets out of check, it's mate
+    return true;
+}
+
+bool mcumax_is_stalemate(uint8_t side) {
+    // 1. Check if the king is NOT in check (necessary condition for stalemate)
+    if (mcumax_is_in_check(side)) {
+        return false; // In check = not stalemate (potentially mate)
+    }
+    
+    // 2. Save the current engine state
+    uint8_t board_backup[sizeof(mcumax.board)];
+    memcpy(board_backup, mcumax.board, sizeof(mcumax.board));
+    uint8_t current_side_backup = mcumax.current_side;
+    uint8_t en_passant_backup = mcumax.en_passant_square;
+    int32_t score_backup = mcumax.score;
+    int32_t npm_backup = mcumax.non_pawn_material;
+    
+    // 3. Make sure it's the tested side's turn
+    mcumax.current_side = side;
+    
+    // 4. Generate all possible legal moves
+    mcumax_move valid_moves[256]; // Buffer large enough for all possible moves
+    uint32_t moves_count = mcumax_search_valid_moves(valid_moves, 256);
+    
+    // 5. Test each move to see if it is really legal (does not put own king in check)
+    for (uint32_t i = 0; i < moves_count; i++) {
+        // Save state before playing the move
+        uint8_t temp_board[sizeof(mcumax.board)];
+        memcpy(temp_board, mcumax.board, sizeof(mcumax.board));
+        uint8_t temp_en_passant = mcumax.en_passant_square;
+        int32_t temp_score = mcumax.score;
+        int32_t temp_npm = mcumax.non_pawn_material;
+        
+        // Play the move temporarily
+        if (mcumax_play_move(valid_moves[i])) {
+            // Check if this move puts own king in check (illegal move)
+            bool puts_own_king_in_check = mcumax_is_in_check(side);
+            
+            // Restore state
+            memcpy(mcumax.board, temp_board, sizeof(mcumax.board));
+            mcumax.en_passant_square = temp_en_passant;
+            mcumax.score = temp_score;
+            mcumax.non_pawn_material = temp_npm;
+            mcumax.current_side = side;
+            
+            // If this move is legal (does not put own king in check), it's not stalemate
+            if (!puts_own_king_in_check) {
+                // Restore full engine state
+                memcpy(mcumax.board, board_backup, sizeof(mcumax.board));
+                mcumax.current_side = current_side_backup;
+                mcumax.en_passant_square = en_passant_backup;
+                mcumax.score = score_backup;
+                mcumax.non_pawn_material = npm_backup;
+                return false;
+            }
+        } else {
+            // The move could not be played, restore anyway
+            memcpy(mcumax.board, temp_board, sizeof(mcumax.board));
+            mcumax.en_passant_square = temp_en_passant;
+            mcumax.score = temp_score;
+            mcumax.non_pawn_material = temp_npm;
+            mcumax.current_side = side;
+        }
+    }
+    
+    // 6. Restore full engine state
+    memcpy(mcumax.board, board_backup, sizeof(mcumax.board));
+    mcumax.current_side = current_side_backup;
+    mcumax.en_passant_square = en_passant_backup;
+    mcumax.score = score_backup;
+    mcumax.non_pawn_material = npm_backup;
+    
+    // 7. If no legal move is available and the king is not in check, it's stalemate
+    return true;
+}
+
+void mcumax_get_fen(char* fen_buffer, size_t buffer_size) {
+    if (!fen_buffer || buffer_size < 100) {
+        return; // Buffer too small for a complete FEN
+    }
+    
+    char* ptr = fen_buffer;
+    size_t remaining = buffer_size - 1; // Leave space for '\0'
+    
+    // 1. Piece positions (8 ranks separated by '/')
+    for (int rank = 0; rank < 8; rank++) {
+        int empty_count = 0;
+        
+        for (int file = 0; file < 8; file++) {
+            mcumax_square square = rank * 16 + file;
+            uint8_t piece_raw = mcumax.board[square];
+            
+            if (piece_raw == MCUMAX_EMPTY) {
+                empty_count++;
+            } else {
+                // Write the number of empty squares if needed
+                if (empty_count > 0) {
+                    if (remaining < 1) return;
+                    *ptr++ = '0' + empty_count;
+                    remaining--;
+                    empty_count = 0;
+                }
+                
+                // Convert piece to FEN symbol
+                char piece_char = '?';
+                int piece_type = piece_raw & 0b111;
+                bool is_white = (piece_raw & MCUMAX_BOARD_WHITE) != 0;
+                
+                switch (piece_type) {
+                    case MCUMAX_PAWN_UPSTREAM:
+                    case MCUMAX_PAWN_DOWNSTREAM:
+                        piece_char = is_white ? 'P' : 'p';
+                        break;
+                    case MCUMAX_KNIGHT:
+                        piece_char = is_white ? 'N' : 'n';
+                        break;
+                    case MCUMAX_KING:
+                        piece_char = is_white ? 'K' : 'k';
+                        break;
+                    case MCUMAX_BISHOP:
+                        piece_char = is_white ? 'B' : 'b';
+                        break;
+                    case MCUMAX_ROOK:
+                        piece_char = is_white ? 'R' : 'r';
+                        break;
+                    case MCUMAX_QUEEN:
+                        piece_char = is_white ? 'Q' : 'q';
+                        break;
+                }
+                
+                if (remaining < 1) return;
+                *ptr++ = piece_char;
+                remaining--;
+            }
+        }
+        
+        // Write the number of empty squares at the end of the rank if needed
+        if (empty_count > 0) {
+            if (remaining < 1) return;
+            *ptr++ = '0' + empty_count;
+            remaining--;
+        }
+        
+        // Add '/' except for the last rank
+        if (rank < 7) {
+            if (remaining < 1) return;
+            *ptr++ = '/';
+            remaining--;
+        }
+    }
+    
+    // 2. Side to move
+    if (remaining < 2) return;
+    *ptr++ = ' ';
+    *ptr++ = (mcumax.current_side == MCUMAX_BOARD_WHITE) ? 'w' : 'b';
+    remaining -= 2;
+    
+    // 3. Castling rights
+    if (remaining < 2) return;
+    *ptr++ = ' ';
+    remaining--;
+    
+    bool has_castling = false;
+    
+    // White king-side castling (K)
+    if (!(mcumax.board[0x74] & MCUMAX_PIECE_MOVED) && !(mcumax.board[0x77] & MCUMAX_PIECE_MOVED)) {
+        if (remaining < 1) return;
+        *ptr++ = 'K';
+        remaining--;
+        has_castling = true;
+    }
+    
+    // White queen-side castling (Q)
+    if (!(mcumax.board[0x74] & MCUMAX_PIECE_MOVED) && !(mcumax.board[0x70] & MCUMAX_PIECE_MOVED)) {
+        if (remaining < 1) return;
+        *ptr++ = 'Q';
+        remaining--;
+        has_castling = true;
+    }
+    
+    // Black king-side castling (k)
+    if (!(mcumax.board[0x04] & MCUMAX_PIECE_MOVED) && !(mcumax.board[0x07] & MCUMAX_PIECE_MOVED)) {
+        if (remaining < 1) return;
+        *ptr++ = 'k';
+        remaining--;
+        has_castling = true;
+    }
+    
+    // Black queen-side castling (q)
+    if (!(mcumax.board[0x04] & MCUMAX_PIECE_MOVED) && !(mcumax.board[0x00] & MCUMAX_PIECE_MOVED)) {
+        if (remaining < 1) return;
+        *ptr++ = 'q';
+        remaining--;
+        has_castling = true;
+    }
+    
+    // If no castling possible
+    if (!has_castling) {
+        if (remaining < 1) return;
+        *ptr++ = '-';
+        remaining--;
+    }
+    
+    // 4. En passant square
+    if (remaining < 2) return;
+    *ptr++ = ' ';
+    remaining--;
+    
+    if (mcumax.en_passant_square == MCUMAX_SQUARE_INVALID) {
+        if (remaining < 1) return;
+        *ptr++ = '-';
+        remaining--;
+    } else {
+        // Convert square to algebraic notation
+        int file = mcumax.en_passant_square & 0x0F;
+        int rank = (mcumax.en_passant_square & 0xF0) >> 4;
+        
+        if (remaining < 2) return;
+        *ptr++ = 'a' + file;
+        *ptr++ = '8' - rank;
+        remaining -= 2;
+    }
+    
+    // 5. Halfmove clock (50-move rule) - Simplified to 0 as not tracked by engine
+    if (remaining < 3) return;
+    *ptr++ = ' ';
+    *ptr++ = '0';
+    remaining -= 2;
+    
+    // 6. Move number - Simplified to 1 as not tracked by engine
+    if (remaining < 3) return;
+    *ptr++ = ' ';
+    *ptr++ = '1';
+    remaining -= 2;
+    
+    // End the string
+    *ptr = '\0';
 }

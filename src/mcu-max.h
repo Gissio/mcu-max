@@ -19,11 +19,14 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdint.h>
-
+#include <stddef.h>
 #define MCUMAX_ID "mcu-max 1.0.6"
 #define MCUMAX_AUTHOR "Gissio"
 
 #define MCUMAX_SQUARE_INVALID 0x80
+
+#define MCUMAX_BOARD_WHITE 0x8
+#define MCUMAX_BOARD_BLACK 0x10
 
 #define MCUMAX_MOVE_INVALID \
     (mcumax_move) { MCUMAX_SQUARE_INVALID, MCUMAX_SQUARE_INVALID }
@@ -120,6 +123,51 @@ void mcumax_set_callback(mcumax_callback callback, void *userdata);
  * @brief Stops the current search. To be called from the user callback.
  */
 void mcumax_stop_search(void);
+
+/**
+ * Checks if the king of the given side is in check.
+ */
+bool mcumax_is_in_check(uint8_t side);
+
+/**
+ * Checks if the king of the given side is in checkmate.
+ */
+bool mcumax_is_in_checkmate(uint8_t side);
+
+/**
+ * Checks if the king of the given side is in stalemate.
+ */
+bool mcumax_is_stalemate(uint8_t side);
+
+/**
+ * Exports the current position in FEN format.
+ */
+void mcumax_get_fen(char* fen_buffer, size_t buffer_size);
+
+typedef struct mcumax_struct {
+    uint8_t board[0x80 + 1];
+    uint8_t current_side;
+    int32_t score;
+    uint8_t en_passant_square;
+    int32_t non_pawn_material;
+#ifdef MCUMAX_HASHING_ENABLED
+    uint32_t hash_key;
+    uint32_t hash_key2;
+#endif
+    uint8_t square_from;
+    uint8_t square_to;
+    uint32_t node_count;
+    uint32_t node_max;
+    uint32_t depth_max;
+    bool stop_search;
+    mcumax_callback user_callback;
+    void *user_data;
+    mcumax_move *valid_moves_buffer;
+    uint32_t valid_moves_buffer_size;
+    uint32_t valid_moves_num;
+} mcumax_struct;
+
+extern mcumax_struct mcumax;
 
 #ifdef __cplusplus
 }

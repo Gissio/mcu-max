@@ -1,25 +1,42 @@
-![Title](docs/img/mcumax-title.png)
+# MCU-MAX
 
-## Overview
+MCU-MAX est une bibliothèque C pour la gestion et l’analyse de parties d’échecs, conçue pour être légère, rapide et facilement intégrable dans des projets embarqués ou des applications desktop.
 
-mcu-max is an MCU-optimized C-language chess game engine based on [micro-Max][micro-max-link].
+## Fonctionnalités principales
 
-mcu-max comes with an Arduino serial port example, and a UCI chess interface example for testing mcu-max from UCI-compatible chess game GUIs.
+- Lecture et écriture de parties au format UCI
+- Détection de situations de pat, échec et mat
+- Interface avec Arduino (exemples fournis)
+- API simple pour l’intégration dans d’autres projets
 
-When running on devices with little memory, you might want to adjust the max depth value to avoid stack overflows.
+## Structure du dépôt
 
-Try the [Rad Pro simulator](https://gissio.github.io/radpro-simulator/) (click the right button and select Game at the bottom of the menu) to test mcu-max.
+- `src/` : Code source principal de la bibliothèque
+- `examples/` : Exemples d’utilisation (Arduino, UCI)
+- `docs/` : Documentation et images
+- `build/` : Fichiers générés par CMake et Make
+- `tests/` : (à compléter) Tests unitaires et d’intégration
 
-## Features
+## Installation
 
-* Configurable hashing.
-* Configurable node limit.
-* Configurable max depth.
-* Valid move listing.
-* Best-move search termination.
+### Prérequis
 
-## Terms of use
+- CMake
+- Un compilateur C (GCC, Clang, etc.)
 
-mcu-max is freely available and distributed under the MIT license.
+### Compilation
 
-[micro-max-link]: https://home.hccnet.nl/h.g.muller/max-src2.html
+Dans le dossier racine, exécutez :
+
+```sh
+cmake -B build
+cmake --build build
+```
+
+Les binaires seront générés dans le dossier `build/`.
+
+## Utilisation
+
+### Exemple Arduino
+
+Voir `examples/arduino/mcu-max-serial/mcu-max-serial.ino` pour une intégration sur microcontrôleur.
