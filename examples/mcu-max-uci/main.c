@@ -227,7 +227,7 @@ bool send_uci_command(char *line)
             if (!strcmp(name, "nodes"))
                 node_max = n;
             else if (!strcmp(name, "depth"))
-                depth_max = n;
+                depth_max = (n < 1) ? 1 : (n > 90) ? 90 : n; // mcu-max: <= 90
             else if (!strcmp(name, "movetime"))
                 movetime = n;
             else if (!strcmp(name, is_white ? "wtime" : "btime"))

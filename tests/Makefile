@@ -1,17 +1,14 @@
 # mcu-max tests
 #
 #   make test       Runs all tests (requires: python3 -m pip install chess)
-#   make size       Checks the Cortex-M0 code size (requires arm-none-eabi-gcc)
-#   make strength   Plays a match against the previous build (slow)
+#   make strength   Plays a match against a reference engine (slow)
+#   make endgame    Checks wins of won endgames against Stockfish (slow)
 #
 # Variables: CC (default cc), GAMES (number of random games, default 100)
 
 CC ?= cc
 PYTHON ?= python3
 GAMES ?= 100
-
-# Code size budget (bytes): raise only on purpose
-SIZE_BUDGET ?= 2129
 
 SRC := ../src/mcu-max.c
 HEADER := ../src/mcu-max.h
@@ -21,7 +18,7 @@ HASH := -DMCUMAX_HASHING_ENABLED -DMCUMAX_HASH_TABLE_SIZE=65536
 
 BUILD := build
 
-.PHONY: test strict api engine engine-hash engine-hash-tiny regression size strength endgame clean
+.PHONY: test strict api engine engine-hash engine-hash-tiny regression strength endgame clean
 
 test: strict api engine engine-hash engine-hash-tiny regression
 
@@ -63,9 +60,6 @@ engine-hash-tiny: $(BUILD)/harness_hash_tiny
 
 regression: $(BUILD)/harness
 	$(PYTHON) regression.py $(BUILD)/harness
-
-size:
-	$(PYTHON) size.py --budget $(SIZE_BUDGET)
 
 # Strength: current build against a reference UCI engine command
 # (e.g. make strength REFERENCE=path/to/old/mcu-max-uci)

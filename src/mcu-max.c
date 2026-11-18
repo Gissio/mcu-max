@@ -95,9 +95,6 @@ enum
 // Search
 #define MCUMAX_DEPTH_MAX 99
 #define MCUMAX_DEPTH_MIN 3 // Iterative deepening runs at least to this depth
-// Largest depth_max: keeps search depths below MCUMAX_DEPTH_MAX - 1 (king
-// capture marker) and MCUMAX_DEPTH_MAX (game history marker in the hash)
-#define MCUMAX_DEPTH_LIMIT 90
 
 // Index into mcumax_steps preceding the king's first (lateral) step
 #define MCUMAX_KING_LATERAL_STEP_INDEX 7
@@ -1091,9 +1088,9 @@ uint32_t mcumax_search_valid_moves(mcumax_move *valid_moves_buffer, uint32_t val
 
 mcumax_move mcumax_search_best_move(uint32_t node_max, uint32_t depth_max)
 {
-    if (depth_max > MCUMAX_DEPTH_LIMIT)
-        depth_max = MCUMAX_DEPTH_LIMIT;
-
+    // depth_max must be at most 90 (see mcu-max.h), which keeps search
+    // depths below MCUMAX_DEPTH_MAX - 1 (king capture marker) and
+    // MCUMAX_DEPTH_MAX (game history marker in the hash)
     // Search returns beta (MCUMAX_SCORE_MAX) when the final pass found
     // the best move
     int32_t score = mcumax_start_search(MCUMAX_SEARCH_BEST_MOVE,

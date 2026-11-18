@@ -174,7 +174,8 @@ mcumax_game_state mcumax_get_game_state(void);
  * mcumax_stop_search().
  *
  * @param node_max The maximum number of nodes to search (strength).
- * @param depth_max The maximum search depth in plies (at most 90). Recursion
+ * @param depth_max The maximum search depth in plies. Must be at most 90
+ *        (larger values break the search; not checked). Recursion
  *        is limited to depth_max + 2 levels, which bounds stack usage to
  *        about (depth_max + 2) * 144 bytes on Cortex-M (176 with hashing).
  *

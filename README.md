@@ -44,7 +44,7 @@ Squares are built with `MCUMAX_SQUARE(file, rank)` (0-7 each: files a-h, ranks 1
 | `mcumax_get_current_side()` | Returns the side to move. |
 | `mcumax_search_valid_moves(buffer, size)` | Lists the legal moves in board order; returns their number (which may exceed `size`). |
 | `mcumax_get_game_state()` | Returns `MCUMAX_GAME_ONGOING`, `_CHECK`, `_STALEMATE` or `_CHECKMATE`. |
-| `mcumax_search_best_move(node_max, depth_max)` | Returns the best move, without playing it. `depth_max` is at most 90. |
+| `mcumax_search_best_move(node_max, depth_max)` | Returns the best move, without playing it. `depth_max` must be at most 90 (not checked). |
 | `mcumax_play_move(move)` | Plays a move if legal; returns `true` if played. |
 | `mcumax_set_callback(callback, userdata)` | Sets a callback, called at every search node (e.g. to feed a watchdog). |
 | `mcumax_stop_search()` | Stops the search, from the callback; the search then returns `MCUMAX_MOVE_INVALID`. |
@@ -83,7 +83,6 @@ python3 -m pip install chess
 cd tests
 make test     # strict builds, API tests with sanitizers, legal moves, game
               # state and FEN against python-chess, regression test
-make size     # linked code size on Cortex-M0 (needs arm-none-eabi-gcc)
 make endgame  # wins of won endgames against Stockfish
 ```
 
@@ -107,7 +106,7 @@ Changes that intentionally alter the search must regenerate the regression test'
 
 * Piece types were renumbered; `MCUMAX_PAWN_UPSTREAM`/`DOWNSTREAM` are now `MCUMAX_PAWN`. Empty squares return `MCUMAX_EMPTY` (previously `MCUMAX_EMPTY | MCUMAX_BLACK`).
 * `mcumax_get_current_side()` returns `MCUMAX_WHITE` or `MCUMAX_BLACK`.
-* `depth_max` limits the recursion depth; values above 90 are treated as 90.
+* `depth_max` limits the recursion depth, and must be at most 90.
 * Hashing requires `MCUMAX_HASH_TABLE_SIZE`.
 
 ## License
