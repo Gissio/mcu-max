@@ -1,0 +1,160 @@
+1n1qkbr1/rpp1ppp1/p2p3n/3P3N/3Q4/3b1PP1/PPP1P2P/RNB1KB1R b Q - 0 10: moves b8d7 b8c6 d8c8 d8d7 e8d7 g8h8 a7a8 b7b6 b7b5 c7c6 c7c5 e7e6 e7e5 f7f6 f7f5 g7g6 g7g5 a6a5 h6f5 h6g4 d3e4 d3f5 d3g6 d3h7 d3c2 d3c4 d3b5 d3e2
+1n1qkbr1/rpp1ppp1/p2p3n/3P3N/3Q4/3b1PP1/PPP1P2P/RNB1KB1R b Q - 0 10: best 300 d3g6
+1n1qkbr1/rpp1ppp1/p2p3n/3P3N/3Q4/3b1PP1/PPP1P2P/RNB1KB1R b Q - 0 10: best 5000 d3g6
+1n1qkbr1/rpp1ppp1/p2p3n/3P3N/3Q4/3b1PP1/PPP1P2P/RNB1KB1R b Q - 0 10: best 40000 d3e2
+rnbqkbnr/2ppp1p1/5p1p/pp6/1PP5/4PP2/P2P2PP/RNBQKBNR w KQkq - 0 5: moves b4a5 c4c5 c4b5 e3e4 f3f4 a2a3 a2a4 d2d3 d2d4 g2g3 g2g4 h2h3 h2h4 b1c3 b1a3 c1b2 c1a3 d1e2 d1c2 d1b3 d1a4 e1e2 e1f2 f1e2 f1d3 g1e2 g1h3
+rnbqkbnr/2ppp1p1/5p1p/pp6/1PP5/4PP2/P2P2PP/RNBQKBNR w KQkq - 0 5: best 300 b1c3
+rnbqkbnr/2ppp1p1/5p1p/pp6/1PP5/4PP2/P2P2PP/RNBQKBNR w KQkq - 0 5: best 5000 b4a5
+rnbqkbnr/2ppp1p1/5p1p/pp6/1PP5/4PP2/P2P2PP/RNBQKBNR w KQkq - 0 5: best 40000 f1d3
+rn2k3/p6p/b4rpn/1p3p2/4PQP1/1P4b1/P1PP2KP/RNB2BR1 w q - 1 21: moves e4e5 e4f5 f4f5 f4f3 f4f2 f4g5 f4h6 f4e3 f4e5 f4d6 f4c7 f4b8 f4g3 g4g5 g4f5 b3b4 a2a3 a2a4 c2c3 c2c4 d2d3 d2d4 g2g3 g2h3 g2f3 g2h1 h2h3 h2h4 h2g3 b1c3 b1a3 c1b2 c1a3 f1e2 f1d3 f1c4 f1b5 g1h1
+rn2k3/p6p/b4rpn/1p3p2/4PQP1/1P4b1/P1PP2KP/RNB2BR1 w q - 1 21: best 300 f4h6
+rn2k3/p6p/b4rpn/1p3p2/4PQP1/1P4b1/P1PP2KP/RNB2BR1 w q - 1 21: best 5000 f4h6
+rn2k3/p6p/b4rpn/1p3p2/4PQP1/1P4b1/P1PP2KP/RNB2BR1 w q - 1 21: best 40000 g2g3
+r2qkbnr/2n2p2/1p5p/P1Bppb2/P6P/8/4P1P1/RN1K1BNR w kq - 0 21: moves a5a6 a5b6 c5d6 c5e7 c5f8 c5b4 c5a3 c5b6 c5d4 c5e3 c5f2 h4h5 e2e3 e2e4 g2g3 g2g4 a1a2 a1a3 b1d2 b1c3 b1a3 d1c1 d1e1 d1d2 g1h3 g1f3 h1h2 h1h3
+r2qkbnr/2n2p2/1p5p/P1Bppb2/P6P/8/4P1P1/RN1K1BNR w kq - 0 21: best 300 c5f8
+r2qkbnr/2n2p2/1p5p/P1Bppb2/P6P/8/4P1P1/RN1K1BNR w kq - 0 21: best 5000 c5f8
+r2qkbnr/2n2p2/1p5p/P1Bppb2/P6P/8/4P1P1/RN1K1BNR w kq - 0 21: best 40000 c5f8
+3r2nr/4p2p/p1p1bp1k/1p1P2p1/1P1P4/7N/P1QB1Pq1/RN2KB2 w Q - 0 20: moves d5d6 d5e6 d5c6 h3f4 h3g1 h3g5 a2a3 a2a4 c2b2 c2c3 c2c4 c2c5 c2c6 c2c1 c2d3 c2e4 c2f5 c2g6 c2h7 c2b3 c2a4 c2d1 d2e3 d2f4 d2g5 d2c1 d2c3 f2f3 f2f4 b1c3 b1a3 e1d1 e1e2 f1g2 f1e2 f1d3 f1c4 f1b5
+3r2nr/4p2p/p1p1bp1k/1p1P2p1/1P1P4/7N/P1QB1Pq1/RN2KB2 w Q - 0 20: best 300 f1g2
+3r2nr/4p2p/p1p1bp1k/1p1P2p1/1P1P4/7N/P1QB1Pq1/RN2KB2 w Q - 0 20: best 5000 f1g2
+3r2nr/4p2p/p1p1bp1k/1p1P2p1/1P1P4/7N/P1QB1Pq1/RN2KB2 w Q - 0 20: best 40000 f1g2
+rn2kb1r/ppp1pppp/5n2/3p4/1PQ1P1b1/P7/3P1PPP/RNB1KBNR w KQkq - 3 10: moves b4b5 c4d4 c4c5 c4c6 c4c7 c4c3 c4c2 c4d5 c4b3 c4a2 c4b5 c4a6 c4d3 c4e2 e4e5 e4d5 a3a4 d2d3 d2d4 f2f3 f2f4 g2g3 h2h3 h2h4 a1a2 b1c3 c1b2 f1e2 f1d3 g1e2 g1h3 g1f3
+rn2kb1r/ppp1pppp/5n2/3p4/1PQ1P1b1/P7/3P1PPP/RNB1KBNR w KQkq - 3 10: best 300 c4c7
+rn2kb1r/ppp1pppp/5n2/3p4/1PQ1P1b1/P7/3P1PPP/RNB1KBNR w KQkq - 3 10: best 5000 c4c7
+rn2kb1r/ppp1pppp/5n2/3p4/1PQ1P1b1/P7/3P1PPP/RNB1KBNR w KQkq - 3 10: best 40000 c4c7
+r3k2r/2pb1p2/n3pP1n/bp1P3P/3P4/PQ2B3/RP6/1R4K1 b - - 5 39: moves a8b8 a8c8 a8d8 a8a7 e8d8 e8f8 h8g8 h8f8 h8h7 c7c6 c7c5 d7c6 d7c8 a6c5 a6b8 a6b4 e6e5 e6d5 h6f5 h6g4 h6g8 a5b6 a5b4 a5c3 a5d2 a5e1 b5b4
+r3k2r/2pb1p2/n3pP1n/bp1P3P/3P4/PQ2B3/RP6/1R4K1 b - - 5 39: best 300 h6f5
+r3k2r/2pb1p2/n3pP1n/bp1P3P/3P4/PQ2B3/RP6/1R4K1 b - - 5 39: best 5000 h8g8
+r3k2r/2pb1p2/n3pP1n/bp1P3P/3P4/PQ2B3/RP6/1R4K1 b - - 5 39: best 40000 h6f5
+r1bq1b1r/pp2kp2/6pn/Q1pnp1Pp/2P4P/P4P2/1P1PP3/RNB2KNR w - - 6 12: moves a5b5 a5c5 a5a6 a5a7 a5a4 a5b6 a5c7 a5d8 a5b4 a5c3 g5h6 c4d5 a3a4 f3f4 b2b3 b2b4 d2d3 d2d4 e2e3 e2e4 a1a2 b1c3 f1e1 f1f2 f1g2 g1h3 h1h2 h1h3
+r1bq1b1r/pp2kp2/6pn/Q1pnp1Pp/2P4P/P4P2/1P1PP3/RNB2KNR w - - 6 12: best 300 a5c5
+r1bq1b1r/pp2kp2/6pn/Q1pnp1Pp/2P4P/P4P2/1P1PP3/RNB2KNR w - - 6 12: best 5000 a5c5
+r1bq1b1r/pp2kp2/6pn/Q1pnp1Pp/2P4P/P4P2/1P1PP3/RNB2KNR w - - 6 12: best 40000 a5c5
+rn1qkbnr/1bpppp2/1p6/p5pp/3P2P1/5P1N/PPP1P2P/RNBQKBR1 w Qkq - 2 7: moves d4d5 g4h5 f3f4 h3f2 h3f4 h3g5 a2a3 a2a4 b2b3 b2b4 c2c3 c2c4 e2e3 e2e4 b1d2 b1c3 b1a3 c1d2 c1e3 c1f4 c1g5 d1d2 d1d3 e1f2 e1d2 f1g2 g1h1 g1g2 g1g3
+rn1qkbnr/1bpppp2/1p6/p5pp/3P2P1/5P1N/PPP1P2P/RNBQKBR1 w Qkq - 2 7: best 300 c1g5
+rn1qkbnr/1bpppp2/1p6/p5pp/3P2P1/5P1N/PPP1P2P/RNBQKBR1 w Qkq - 2 7: best 5000 c1g5
+rn1qkbnr/1bpppp2/1p6/p5pp/3P2P1/5P1N/PPP1P2P/RNBQKBR1 w Qkq - 2 7: best 40000 c1g5
+r2q3r/p4pbp/np2kn2/2pp2P1/P3N1K1/3PP3/1PP2NPP/R1BQ1B1R w - - 3 22: moves g5f6 e4f6 g4f4 g4h4 g4g3 g4f3 g4h3
+r2q3r/p4pbp/np2kn2/2pp2P1/P3N1K1/3PP3/1PP2NPP/R1BQ1B1R w - - 3 22: best 300 g5f6
+r2q3r/p4pbp/np2kn2/2pp2P1/P3N1K1/3PP3/1PP2NPP/R1BQ1B1R w - - 3 22: best 5000 e4f6
+r2q3r/p4pbp/np2kn2/2pp2P1/P3N1K1/3PP3/1PP2NPP/R1BQ1B1R w - - 3 22: best 40000 e4f6
+4k2r/r1p2p1p/1b2b3/p2Pn1p1/3p2P1/P6P/1P1PqP1K/R1BQ1R1B b k - 0 23: moves e8d8 e8f8 e8g8 e8e7 e8d7 h8g8 h8f8 a7b7 a7a8 a7a6 c7c6 c7c5 f7f6 f7f5 h7h6 h7h5 b6c5 e6d5 e6d7 e6c8 e6f5 e6g4 a5a4 e5g6 e5c4 e5c6 e5g4 e5d3 e5d7 e5f3 d4d3 e2d2 e2f2 e2e3 e2e4 e2e1 e2f3 e2g4 e2d1 e2d3 e2c4 e2b5 e2a6 e2f1
+4k2r/r1p2p1p/1b2b3/p2Pn1p1/3p2P1/P6P/1P1PqP1K/R1BQ1R1B b k - 0 23: best 300 e2d1
+4k2r/r1p2p1p/1b2b3/p2Pn1p1/3p2P1/P6P/1P1PqP1K/R1BQ1R1B b k - 0 23: best 5000 e2d1
+4k2r/r1p2p1p/1b2b3/p2Pn1p1/3p2P1/P6P/1P1PqP1K/R1BQ1R1B b k - 0 23: best 40000 e2d1
+4k2r/3bb3/1r1p1ppp/6PP/2q5/2R2n2/4P1P1/BNK1NB1R b - - 1 34: moves e8d8 e8f8 e8f7 h8g8 h8f8 h8h7 d7c6 d7b5 d7a4 d7c8 d7e6 d7f5 d7g4 d7h3 e7f8 e7d8 b6a6 b6c6 b6b7 b6b8 b6b5 b6b4 b6b3 b6b2 b6b1 d6d5 f6f5 f6g5 g6h5 h6g5 c4b4 c4a4 c4d4 c4e4 c4f4 c4g4 c4h4 c4c5 c4c6 c4c7 c4c8 c4c3 c4d5 c4e6 c4f7 c4g8 c4b3 c4a2 c4b5 c4a6 c4d3 c4e2 f3h4 f3d2 f3d4 f3h2 f3g5 f3e1 f3e5 f3g1
+4k2r/3bb3/1r1p1ppp/6PP/2q5/2R2n2/4P1P1/BNK1NB1R b - - 1 34: best 300 c4a4
+4k2r/3bb3/1r1p1ppp/6PP/2q5/2R2n2/4P1P1/BNK1NB1R b - - 1 34: best 5000 c4a2
+4k2r/3bb3/1r1p1ppp/6PP/2q5/2R2n2/4P1P1/BNK1NB1R b - - 1 34: best 40000 c4a2
+2B2knr/3R1rbp/n7/2p2bB1/6N1/pP3KPN/P1P4P/R7 b - - 2 33: moves f8e8 g8e7 g8f6 g8h6 f7e7 f7d7 f7f6 g7f6 g7e5 g7d4 g7c3 g7b2 g7a1 g7h6 h7h6 h7h5 a6c7 a6b8 a6b4 c5c4 f5g6 f5e4 f5d3 f5c2 f5e6 f5d7 f5g4
+2B2knr/3R1rbp/n7/2p2bB1/6N1/pP3KPN/P1P4P/R7 b - - 2 33: best 300 f5d7
+2B2knr/3R1rbp/n7/2p2bB1/6N1/pP3KPN/P1P4P/R7 b - - 2 33: best 5000 f5d7
+2B2knr/3R1rbp/n7/2p2bB1/6N1/pP3KPN/P1P4P/R7 b - - 2 33: best 40000 f5d7
+6nr/1b1k4/1pnb1p1p/1rp1p1p1/1NP1P3/N3K1P1/P2P3P/R1BR1B2 b - - 2 27: moves g8e7 h8h7 b7c8 b7a6 b7a8 d7c7 d7e7 d7d8 d7e8 d7c8 d7e6 c6e7 c6a5 c6a7 c6d8 c6b4 c6b8 c6d4 d6e7 d6f8 d6c7 d6b8 f6f5 h6h5 b5a5 b5b4 c5b4 g5g4
+6nr/1b1k4/1pnb1p1p/1rp1p1p1/1NP1P3/N3K1P1/P2P3P/R1BR1B2 b - - 2 27: best 300 b5b4
+6nr/1b1k4/1pnb1p1p/1rp1p1p1/1NP1P3/N3K1P1/P2P3P/R1BR1B2 b - - 2 27: best 5000 b5b4
+6nr/1b1k4/1pnb1p1p/1rp1p1p1/1NP1P3/N3K1P1/P2P3P/R1BR1B2 b - - 2 27: best 40000 b5b4
+3qk1nr/3b2p1/5p1p/1p3p2/1b1r1PPP/3pPN1R/PBnKN3/R7 w - - 2 29: moves b2c3 d2d1 d2c1 e2c3
+3qk1nr/3b2p1/5p1p/1p3p2/1b1r1PPP/3pPN1R/PBnKN3/R7 w - - 2 29: best 300 e2c3
+3qk1nr/3b2p1/5p1p/1p3p2/1b1r1PPP/3pPN1R/PBnKN3/R7 w - - 2 29: best 5000 e2c3
+3qk1nr/3b2p1/5p1p/1p3p2/1b1r1PPP/3pPN1R/PBnKN3/R7 w - - 2 29: best 40000 e2c3
+r1bqk2r/2ppbppp/1pn5/p7/P1NPpP2/2PnB2P/1P2P3/1R1QKBNR w Kkq - 1 12: moves e2d3 d1d3 e1d2
+r1bqk2r/2ppbppp/1pn5/p7/P1NPpP2/2PnB2P/1P2P3/1R1QKBNR w Kkq - 1 12: best 300 e2d3
+r1bqk2r/2ppbppp/1pn5/p7/P1NPpP2/2PnB2P/1P2P3/1R1QKBNR w Kkq - 1 12: best 5000 e2d3
+r1bqk2r/2ppbppp/1pn5/p7/P1NPpP2/2PnB2P/1P2P3/1R1QKBNR w Kkq - 1 12: best 40000 e2d3
+r5r1/3P2p1/n1N3k1/N2pB3/7p/6P1/2PqBPbP/1R1R2K1 w - - 5 34: moves d7d8 c6e7 c6a7 c6d8 c6b4 c6b8 c6d4 a5c4 a5b7 a5b3 e5f6 e5g7 e5d4 e5c3 e5b2 e5a1 e5d6 e5c7 e5b8 e5f4 g3g4 g3h4 c2c3 c2c4 e2f3 e2g4 e2h5 e2d3 e2c4 e2b5 e2a6 e2f1 f2f3 f2f4 h2h3 b1a1 b1c1 b1b2 b1b3 b1b4 b1b5 b1b6 b1b7 b1b8 d1c1 d1e1 d1f1 d1d2 g1g2
+r5r1/3P2p1/n1N3k1/N2pB3/7p/6P1/2PqBPbP/1R1R2K1 w - - 5 34: best 300 c6e7
+r5r1/3P2p1/n1N3k1/N2pB3/7p/6P1/2PqBPbP/1R1R2K1 w - - 5 34: best 5000 c6e7
+r5r1/3P2p1/n1N3k1/N2pB3/7p/6P1/2PqBPbP/1R1R2K1 w - - 5 34: best 40000 c6e7
+6n1/5kB1/3p2r1/pb3P1N/3P3p/3P1p2/PN3KP1/5B1R b - - 9 39: moves g8e7 g8f6 g8h6 f7e7 f7e8 d6d5 g6f6 g6e6 g6h6 g6g7 g6g5 g6g4 g6g3 g6g2 a5a4 b5c6 b5d7 b5e8 b5a4 b5a6 b5c4 b5d3 h4h3 f3g2
+6n1/5kB1/3p2r1/pb3P1N/3P3p/3P1p2/PN3KP1/5B1R b - - 9 39: best 300 g6g7
+6n1/5kB1/3p2r1/pb3P1N/3P3p/3P1p2/PN3KP1/5B1R b - - 9 39: best 5000 g6g7
+6n1/5kB1/3p2r1/pb3P1N/3P3p/3P1p2/PN3KP1/5B1R b - - 9 39: best 40000 g6g7
+1n1q1b1r/r3pk1p/1pp2P2/3p2B1/P1b5/1P1P1N1B/4KP1P/R5NR w - - 1 21: moves f6e7 g5h6 g5f4 g5e3 g5d2 g5c1 g5h4 a4a5 b3b4 b3c4 d3c4 f3h4 f3d2 f3d4 f3e1 f3e5 h3g2 h3f1 h3g4 h3f5 h3e6 h3d7 h3c8 e2d2 e2e3 e2e1 e2d1 e2f1 a1b1 a1c1 a1d1 a1e1 a1f1 a1a2 a1a3
+1n1q1b1r/r3pk1p/1pp2P2/3p2B1/P1b5/1P1P1N1B/4KP1P/R5NR w - - 1 21: best 300 f3e5
+1n1q1b1r/r3pk1p/1pp2P2/3p2B1/P1b5/1P1P1N1B/4KP1P/R5NR w - - 1 21: best 5000 f3e5
+1n1q1b1r/r3pk1p/1pp2P2/3p2B1/P1b5/1P1P1N1B/4KP1P/R5NR w - - 1 21: best 40000 f3e5
+r4b1r/Bp1knppp/2q5/4pb2/3Pp3/1P3PP1/P2PK1QP/RN4NR b - - 1 15: moves a8b8 a8c8 a8d8 a8e8 a8a7 h8g8 b7b6 b7b5 d7c7 d7d8 d7d6 d7e8 d7c8 d7e6 e7g8 e7c8 e7g6 e7d5 f7f6 g7g6 g7g5 h7h6 h7h5 c6b6 c6a6 c6d6 c6e6 c6f6 c6g6 c6h6 c6c7 c6c8 c6c5 c6c4 c6c3 c6c2 c6c1 c6b5 c6a4 c6d5 e5d4 f5g6 f5e6 f5g4 f5h3 e4e3 e4f3
+r4b1r/Bp1knppp/2q5/4pb2/3Pp3/1P3PP1/P2PK1QP/RN4NR b - - 1 15: best 300 a8a7
+r4b1r/Bp1knppp/2q5/4pb2/3Pp3/1P3PP1/P2PK1QP/RN4NR b - - 1 15: best 5000 c6a6
+r4b1r/Bp1knppp/2q5/4pb2/3Pp3/1P3PP1/P2PK1QP/RN4NR b - - 1 15: best 40000 c6a6
+r1b2q1r/p1pppkbp/n5pn/1p6/2PPp3/PP4P1/NB3P1P/R2QKBNR b KQ d3 0 11: moves a8b8 c8b7 f8e8 f8d8 f8g8 h8g8 c7c6 c7c5 d7d6 d7d5 e7e6 e7e5 f7f6 f7g8 f7e6 f7e8 g7f6 g7e5 g7d4 a6c5 a6b8 a6b4 g6g5 h6f5 h6g4 h6g8 b5b4 b5c4 e4e3 e4d3
+r1b2q1r/p1pppkbp/n5pn/1p6/2PPp3/PP4P1/NB3P1P/R2QKBNR b KQ d3 0 11: best 300 b5c4
+r1b2q1r/p1pppkbp/n5pn/1p6/2PPp3/PP4P1/NB3P1P/R2QKBNR b KQ d3 0 11: best 5000 c8b7
+r1b2q1r/p1pppkbp/n5pn/1p6/2PPp3/PP4P1/NB3P1P/R2QKBNR b KQ d3 0 11: best 40000 e4d3
+rnbqkbnr/p2pp3/1p3ppp/2p5/P2P2P1/7P/NPP1PP2/R1BQKBNR b KQkq - 0 6: moves b8a6 b8c6 c8b7 c8a6 d8c7 e8f7 f8g7 h8h7 a7a6 a7a5 d7d6 d7d5 e7e6 e7e5 b6b5 f6f5 g6g5 h6h5 c5c4 c5d4
+rnbqkbnr/p2pp3/1p3ppp/2p5/P2P2P1/7P/NPP1PP2/R1BQKBNR b KQkq - 0 6: best 300 b8c6
+rnbqkbnr/p2pp3/1p3ppp/2p5/P2P2P1/7P/NPP1PP2/R1BQKBNR b KQkq - 0 6: best 5000 c5d4
+rnbqkbnr/p2pp3/1p3ppp/2p5/P2P2P1/7P/NPP1PP2/R1BQKBNR b KQkq - 0 6: best 40000 c5d4
+r1b1k1nr/1ppp3p/2n2q2/3PN3/5PPQ/P1BB4/4P1RP/bN2K3 b - - 6 27: moves a8b8 a8a7 a8a6 a8a5 a8a4 a8a3 e8d8 e8f8 e8e7 g8e7 g8h6 b7b6 b7b5 d7d6 h7h6 h7h5 c6e7 c6a5 c6a7 c6e5 c6d8 c6b4 c6b8 c6d4 f6e6 f6d6 f6g6 f6h6 f6f7 f6f8 f6f5 f6f4 f6g7 f6e5 f6e7 f6d8 f6g5 f6h4 a1b2 a1c3
+r1b1k1nr/1ppp3p/2n2q2/3PN3/5PPQ/P1BB4/4P1RP/bN2K3 b - - 6 27: best 300 f6h4
+r1b1k1nr/1ppp3p/2n2q2/3PN3/5PPQ/P1BB4/4P1RP/bN2K3 b - - 6 27: best 5000 f6h4
+r1b1k1nr/1ppp3p/2n2q2/3PN3/5PPQ/P1BB4/4P1RP/bN2K3 b - - 6 27: best 40000 f6h4
+r3kbn1/3qpp1r/p2P4/3n2P1/1p1P1Q2/1p2B3/P1b1RPP1/4KBN1 b q - 2 22: moves a8b8 a8c8 a8d8 a8a7 e8d8 e8c8 f8g7 f8h6 g8f6 g8h6 d7c7 d7b7 d7a7 d7d8 d7d6 d7c6 d7b5 d7a4 d7c8 d7e6 d7f5 d7g4 d7h3 e7e6 e7e5 e7d6 f7f6 f7f5 h7g7 h7h8 h7h6 h7h5 h7h4 h7h3 h7h2 h7h1 a6a5 d5f6 d5b6 d5f4 d5c3 d5c7 d5e3 b3b2 b3a2 c2d3 c2e4 c2f5 c2g6 c2b1 c2d1
+r3kbn1/3qpp1r/p2P4/3n2P1/1p1P1Q2/1p2B3/P1b1RPP1/4KBN1 b q - 2 22: best 300 d5f4
+r3kbn1/3qpp1r/p2P4/3n2P1/1p1P1Q2/1p2B3/P1b1RPP1/4KBN1 b q - 2 22: best 5000 d5f4
+r3kbn1/3qpp1r/p2P4/3n2P1/1p1P1Q2/1p2B3/P1b1RPP1/4KBN1 b q - 2 22: best 40000 d5f4
+Q1bk2r1/r7/pn1b3n/1Np2pPp/P1P1pp2/1P5N/3K3P/R1B1R2B b - - 0 24: moves d8e8 d8d7 d8e7 g8f8 g8e8 g8h8 g8g7 g8g6 g8g5 a7b7 a7c7 a7d7 a7e7 a7f7 a7g7 a7h7 a7a8 a6a5 a6b5 b6d7 b6d5 b6a4 b6a8 b6c4 d6e7 d6f8 d6c7 d6b8 d6e5 h6f7 h6g4 h5h4 e4e3 f4f3
+Q1bk2r1/r7/pn1b3n/1Np2pPp/P1P1pp2/1P5N/3K3P/R1B1R2B b - - 0 24: best 300 e4e3
+Q1bk2r1/r7/pn1b3n/1Np2pPp/P1P1pp2/1P5N/3K3P/R1B1R2B b - - 0 24: best 5000 e4e3
+Q1bk2r1/r7/pn1b3n/1Np2pPp/P1P1pp2/1P5N/3K3P/R1B1R2B b - - 0 24: best 40000 a7a8
+self-play 0: d2d4
+self-play 1: d7d5
+self-play 2: b1c3
+self-play 3: b8c6
+self-play 4: c1f4
+self-play 5: c8f5
+self-play 6: e2e3
+self-play 7: e7e6
+self-play 8: g2g4
+self-play 9: f5g6
+self-play 10: g1f3
+self-play 11: f8d6
+self-play 12: f1d3
+self-play 13: g8f6
+self-play 14: f4g5
+self-play 15: h7h6
+self-play 16: d3g6
+self-play 17: h6g5
+self-play 18: g6d3
+self-play 19: f6g4
+self-play 20: h2h3
+self-play 21: a7a5
+self-play 22: h1g1
+self-play 23: g4f6
+self-play 24: g1g5
+self-play 25: e8g8
+self-play 26: a2a4
+self-play 27: c6b4
+self-play 28: d3e2
+self-play 29: b4c6
+self-play 30: e2d3
+self-play 31: c6b4
+self-play 32: d3e2
+self-play 33: b4c6
+self-play 34: e2d3
+self-play 35: c6b4
+self-play 36: d3e2
+self-play 37: b4c6
+self-play 38: e2d3
+self-play 39: c6b4
+self-play 40: d3e2
+self-play 41: b4c6
+self-play 42: e2d3
+self-play 43: c6b4
+self-play 44: d3e2
+self-play 45: b4c6
+self-play 46: e2d3
+self-play 47: c6b4
+self-play 48: d3e2
+self-play 49: b4c6
+self-play 50: e2d3
+self-play 51: c6b4
+self-play 52: d3e2
+self-play 53: b4c6
+self-play 54: e2d3
+self-play 55: c6b4
+self-play 56: d3e2
+self-play 57: b4c6
+self-play 58: e2d3
+self-play 59: c6b4

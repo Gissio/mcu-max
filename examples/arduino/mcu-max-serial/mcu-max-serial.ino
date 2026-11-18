@@ -12,10 +12,8 @@
 #define MCUMAX_NODE_MAX 1000
 #define MCUMAX_DEPTH_MAX 3
 
-#define GAME_VALID_MOVES_NUM_MAX 181
-
 void print_board() {
-  const char *symbols = ".PPNKBRQ.ppnkbrq";
+  const char *symbols = ".PNBRQK?.pnbrqk?";
 
   Serial.println("");
   Serial.println("  +-----------------+");
@@ -24,7 +22,7 @@ void print_board() {
     Serial.print(8 - y);
     Serial.print(" | ");
     for (uint32_t x = 0; x < 8; x++) {
-      Serial.print(symbols[mcumax_get_piece(0x10 * y + x)]);
+      Serial.print(symbols[mcumax_get_piece(MCUMAX_SQUARE(x, 7 - y))]);
       Serial.print(' ');
     }
     Serial.println("|");
@@ -36,8 +34,8 @@ void print_board() {
 }
 
 void print_square(mcumax_square square) {
-  Serial.print((char)('a' + ((square & 0x07) >> 0)));
-  Serial.print((char)('1' + 7 - ((square & 0x70) >> 4)));
+  Serial.print((char)('a' + MCUMAX_SQUARE_FILE(square)));
+  Serial.print((char)('1' + MCUMAX_SQUARE_RANK(square)));
 }
 
 void print_move(mcumax_move move) {
@@ -50,15 +48,12 @@ void print_move(mcumax_move move) {
 }
 
 mcumax_square get_square(char *s) {
-  mcumax_square rank = s[0] - 'a';
-  if (rank > 7)
+  uint8_t file = s[0] - 'a';
+  uint8_t rank = s[1] - '1';
+  if ((file > 7) || (rank > 7))
     return MCUMAX_SQUARE_INVALID;
 
-  mcumax_square file = '8' - s[1];
-  if (file > 7)
-    return MCUMAX_SQUARE_INVALID;
-
-  return 0x10 * file + rank;
+  return MCUMAX_SQUARE(file, rank);
 }
 
 char serial_input[5];
@@ -69,24 +64,25 @@ void init_serial_input() {
 
 bool get_serial_input() {
   if (Serial.available()) {
-    char s[2];
-    s[0] = Serial.read();
-    s[1] = '\0';
+    char c = Serial.read();
 
-    if (s[0] == '\n')
-      return true;
+    if ((c == '\n') || (c == '\r'))
+      return (strlen(serial_input) != 0);
 
-    if (s[0] == '\b') {
-      int n = strlen(s);
-      if (n)
-        s[n - 1] = '\0';
-    }
+    if ((c == '\b') || (c == 0x7f)) {
+      int n = strlen(serial_input);
+      if (n) {
+        serial_input[n - 1] = '\0';
+        Serial.print("\b \b");
+      }
+    } else if (c >= ' ') {
+      int n = strlen(serial_input);
+      if (n < 4) {
+        serial_input[n] = c;
+        serial_input[n + 1] = '\0';
+      }
 
-    if (s[0] >= ' ') {
-      if (strlen(serial_input) < 4)
-        strcat(serial_input, s);
-
-      Serial.print(s[0]);
+      Serial.print(c);
     }
   }
 
@@ -110,6 +106,26 @@ void setup() {
   print_board();
 }
 
+// Prints the game state; returns true if the game is over
+bool print_game_state() {
+  switch (mcumax_get_game_state()) {
+    case MCUMAX_GAME_CHECK:
+      Serial.println("Check.");
+      return false;
+
+    case MCUMAX_GAME_CHECKMATE:
+      Serial.println("Checkmate.");
+      return true;
+
+    case MCUMAX_GAME_STALEMATE:
+      Serial.println("Stalemate.");
+      return true;
+
+    default:
+      return false;
+  }
+}
+
 void loop() {
   if (!get_serial_input())
     return;
@@ -118,29 +134,22 @@ void loop() {
 
   Serial.println("");
 
-  mcumax_move move = (mcumax_move){
+  mcumax_move move = {
     get_square(serial_input + 0),
     get_square(serial_input + 2),
   };
 
-  mcumax_move valid_moves[GAME_VALID_MOVES_NUM_MAX];
-  uint32_t valid_moves_num = mcumax_search_valid_moves(valid_moves, GAME_VALID_MOVES_NUM_MAX);
-  bool is_valid_move = false;
-  for (uint32_t i = 0; i < valid_moves_num; i++)
-    if ((valid_moves[i].from == move.from) &&
-      (valid_moves[i].to == move.to))
-      is_valid_move = true;
-
-  if (!is_valid_move || !mcumax_play_move(move))
+  // mcumax_play_move() only plays legal moves
+  if (!mcumax_play_move(move))
     Serial.println("Invalid move.");
-  else {
-    mcumax_move move = mcumax_search_best_move(MCUMAX_NODE_MAX, MCUMAX_DEPTH_MAX);
-    if (move.from == MCUMAX_SQUARE_INVALID)
-      Serial.println("Game over.");
-    else if (mcumax_play_move(move)) {
+  else if (!print_game_state()) {
+    move = mcumax_search_best_move(MCUMAX_NODE_MAX, MCUMAX_DEPTH_MAX);
+    if (mcumax_play_move(move)) {
       Serial.print("Opponent moves: ");
       print_move(move);
       Serial.println("");
+
+      print_game_state();
     }
   }
 

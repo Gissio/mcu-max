@@ -1,2 +1,4 @@
 .vscode
 build
+tests/build/
+__pycache__/

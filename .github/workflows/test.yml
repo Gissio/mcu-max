@@ -1,0 +1,48 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang
+          python3 -m pip install chess
+
+      - name: Run tests
+        working-directory: tests
+        run: make test CC=${{ matrix.cc }}
+
+  size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi
+
+      - name: Check code size
+        working-directory: tests
+        run: make size
+
+  cpp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Header compiles as C++
+        run: |
+          printf '#include "mcu-max.h"\nint main() { mcumax_move m = MCUMAX_MOVE_INVALID; return m.from != MCUMAX_SQUARE(0, 0); }\n' > test.cpp
+          g++ -std=c++11 -Wall -pedantic-errors -Isrc -c test.cpp -o test.o
